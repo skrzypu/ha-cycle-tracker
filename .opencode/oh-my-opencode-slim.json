@@ -1,0 +1,206 @@
+{
+  "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
+  "preset": "opencode-go-free",
+  "disabled_agents": [],
+  "presets": {
+    "opencode-go-free": {
+      "orchestrator": {
+        "model": "opencode/nemotron-3-ultra-free",
+        "variant": "high",
+        "skills": [
+          "*",
+          "codemap",
+          "find-skills",
+          "subagent-driven-development",
+          "dispatching-parallel-agents",
+          "writing-plans",
+          "executing-plans",
+          "requesting-code-review",
+          "finishing-a-development-branch"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
+      },
+      "oracle": {
+        "model": "opencode/nemotron-3-ultra-free",
+        "variant": "high",
+        "skills": [
+          "simplify",
+          "verification-planning",
+          "deepwork",
+          "systematic-debugging"
+        ],
+        "mcps": []
+      },
+      "council": {
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "skills": [],
+        "mcps": []
+      },
+      "librarian": {
+        "model": "opencode/longcat-2.5-preview-free",
+        "skills": [
+          "find-skills"
+        ],
+        "mcps": [
+          "websearch",
+          "context7",
+          "grep_app"
+        ]
+      },
+      "explorer": {
+        "model": "opencode/longcat-2.5-preview-free",
+        "skills": [],
+        "mcps": []
+      },
+      "designer": {
+        "model": "opencode/space-bunny-free",
+        "variant": "medium",
+        "skills": [
+          "agent-browser",
+          "sleek-design-mobile-apps"
+        ],
+        "mcps": []
+      },
+      "fixer": {
+        "model": "opencode/space-bunny-free",
+        "variant": "high",
+        "skills": [
+          "test-driven-development",
+          "verification-before-completion",
+          "simplify"
+        ],
+        "mcps": []
+      },
+      "observer": {
+        "model": "opencode/muse-spark-1.3-contributor-free",
+        "skills": [],
+        "mcps": []
+      },
+      "docs-writer": {
+        "model": "opencode/space-bunny-free",
+        "skills": [],
+        "mcps": []
+      },
+      "github-issues": {
+        "model": "opencode/space-bunny-free",
+        "skills": [],
+        "mcps": []
+      },
+      "tester": {
+        "model": "opencode/space-bunny-free",
+        "skills": [
+          "webapp-testing",
+          "playwright-best-practices",
+          "verification-before-completion"
+        ],
+        "mcps": []
+      }
+    },
+    "opencode-go-paid": {
+      "orchestrator": {
+        "model": "opencode/deepseek-v4-pro",
+        "variant": "max",
+        "skills": [
+          "*",
+          "codemap",
+          "find-skills",
+          "subagent-driven-development",
+          "dispatching-parallel-agents",
+          "writing-plans",
+          "executing-plans",
+          "requesting-code-review",
+          "finishing-a-development-branch"
+        ],
+        "mcps": [
+          "*",
+          "!context7"
+        ]
+      },
+      "oracle": {
+        "model": "opencode/qwen3.8-max",
+        "variant": "max",
+        "skills": [
+          "simplify",
+          "verification-planning",
+          "deepwork",
+          "systematic-debugging"
+        ],
+        "mcps": []
+      },
+      "council": {
+        "model": "opencode/kimi-k3",
+        "variant": "high",
+        "skills": [],
+        "mcps": []
+      },
+      "librarian": {
+        "model": "opencode/deepseek-v4.1-flash",
+        "skills": [
+          "find-skills"
+        ],
+        "mcps": [
+          "websearch",
+          "context7",
+          "grep_app"
+        ]
+      },
+      "explorer": {
+        "model": "opencode/deepseek-v4.1-flash",
+        "skills": [],
+        "mcps": []
+      },
+      "designer": {
+        "model": "opencode/deepseek-v4-flash-vision-exp",
+        "variant": "medium",
+        "skills": [
+          "agent-browser",
+          "sleek-design-mobile-apps"
+        ],
+        "mcps": []
+      },
+      "fixer": {
+        "model": "opencode/kimi-k2.7-code",
+        "variant": "high",
+        "skills": [
+          "test-driven-development",
+          "verification-before-completion",
+          "simplify"
+        ],
+        "mcps": []
+      },
+      "observer": {
+        "model": "opencode/muse-spark-1.3",
+        "skills": [],
+        "mcps": []
+      },
+      "docs-writer": {
+        "model": "opencode/qwen3.8-flash",
+        "skills": [],
+        "mcps": []
+      },
+      "github-issues": {
+        "model": "opencode/qwen3.8-flash",
+        "skills": [],
+        "mcps": []
+      },
+      "tester": {
+        "model": "opencode/deepseek-v4.1-flash",
+        "skills": [
+          "webapp-testing",
+          "playwright-best-practices",
+          "verification-before-completion"
+        ],
+        "mcps": []
+      }
+    }
+  },
+  "backgroundJobs": {
+    "maxSessionsPerAgent": 3,
+    "readContextMinLines": 15,
+    "readContextMaxFiles": 4
+  }
+}

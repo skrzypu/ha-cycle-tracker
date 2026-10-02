@@ -1,0 +1,135 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "project": {
+    "name": "ha-cycle-tracker",
+    "description": "Home Assistant Menstrual Cycle Tracker - Python HA custom component with local prediction algorithms"
+  },
+  "model": "opencode/nemotron-3-ultra-free",
+  "default_agent": "orchestrator",
+  "agent": {
+    "orchestrator": {
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "Main orchestrator for ha-cycle-tracker"
+    },
+    "python-ha-component": {
+      "type": "fixer",
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "Python Home Assistant custom component: config flow, sensors, calendar, services, HA integration, prediction algorithms",
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "allow"
+      },
+      "skills": ["simplify", "test-driven-development", "verification-before-completion"]
+    },
+    "test-engineer": {
+      "type": "fixer",
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "Test implementation: pytest for HA component, contract tests, pre-commit hook integration",
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "allow"
+      },
+      "skills": ["verification-planning", "webapp-testing", "playwright-best-practices", "systematic-debugging"]
+    },
+    "api-researcher": {
+      "type": "librarian",
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "Research: Home Assistant API changes, Python HA custom component patterns, HACS requirements",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "webfetch": "allow",
+        "websearch": "allow"
+      },
+      "skills": ["find-skills"]
+    },
+    "code-explorer": {
+      "type": "explorer",
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "Fast codebase navigation: find symbols, trace call graphs, locate test files, search patterns in Python HA component",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow"
+      },
+      "skills": []
+    },
+    "design-reviewer": {
+      "type": "designer",
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "UI/UX review for Lovelace card, config flow, dashboard - visual hierarchy, accessibility, responsive behavior",
+      "permission": {
+        "read": "allow",
+        "edit": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "allow"
+      },
+      "skills": ["sleek-design-mobile-apps", "agent-browser"]
+    },
+    "orchestrator-coach": {
+      "type": "oracle",
+      "model": "opencode/nemotron-3-ultra-free",
+      "description": "Meta-coaching for orchestrator: delegation patterns, parallel agent dispatch, subagent-driven development, branch finishing",
+      "permission": {
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow"
+      },
+      "skills": ["subagent-driven-development", "dispatching-parallel-agents", "requesting-code-review", "finishing-a-development-branch"]
+    }
+  },
+  "permission": {
+    "default": "ask",
+    "read": {
+      "**/*.py": "allow",
+      "**/*.yaml": "allow",
+      "**/*.yml": "allow",
+      "**/*.json": "allow",
+      "**/*.md": "allow",
+      "**/*.toml": "allow",
+      ".github/**": "allow",
+      "custom_components/**": "allow",
+      "specs/**": "allow",
+      ".pre-commit-config.yaml": "allow",
+      "pyproject.toml": "allow",
+      ".gitignore": "allow",
+      "pytest.ini": "allow"
+    },
+    "edit": {
+      "**/*.py": "allow",
+      "**/*.yaml": "allow",
+      "**/*.yml": "allow",
+      "**/*.json": "allow",
+      "**/*.md": "allow",
+      "**/*.toml": "allow",
+      ".github/**": "allow",
+      "custom_components/**": "allow",
+      "specs/**": "allow",
+      ".pre-commit-config.yaml": "allow",
+      "pyproject.toml": "allow",
+      ".gitignore": "allow",
+      "pytest.ini": "allow"
+    },
+    "glob": "allow",
+    "grep": "allow",
+    "task": "allow",
+    "bash": "ask",
+    "webfetch": "ask",
+    "websearch": "ask"
+  },
+  "hook": {
+    "pre-commit": "pre-commit run --all-files",
+    "pre-push": "echo 'Push blocked - require explicit permission' && exit 1"
+  },
+  "env": {
+    "PYTHONPATH": "${workspace}/custom_components:${PYTHONPATH}"
+  }
+}

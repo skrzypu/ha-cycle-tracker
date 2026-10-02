@@ -1,0 +1,13 @@
+{
+  "domain": "cycle_tracker",
+  "name": "Cycle Tracker",
+  "version": "0.1.0",
+  "documentation": "https://github.com/tomek/ha-cycle-tracker",
+  "issue_tracker": "https://github.com/tomek/ha-cycle-tracker/issues",
+  "requirements": [],
+  "config_flow": true,
+  "integration_type": "hub",
+  "dependencies": [],
+  "homeassistant": ">=2024.1.0",
+  "codeowners": ["@tomek"]
+}

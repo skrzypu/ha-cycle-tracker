@@ -1,0 +1,34 @@
+log_start:
+  name: "Log Period Start"
+  description: "Log the start of a menstrual period"
+  fields:
+    date:
+      name: "Date"
+      description: "Start date of the period (ISO format: YYYY-MM-DD)"
+      required: true
+      selector:
+        date: {}
+    flow_intensity:
+      name: "Flow Intensity"
+      description: "Intensity of the flow"
+      required: false
+      selector:
+        select:
+          options:
+            - spotting
+            - light
+            - medium
+            - heavy
+          translation_key: "flow_intensity"
+          mode: dropdown
+
+log_end:
+  name: "Log Period End"
+  description: "Log the end of a menstrual period"
+  fields:
+    date:
+      name: "Date"
+      description: "End date of the period (ISO format: YYYY-MM-DD)"
+      required: true
+      selector:
+        date: {}
