@@ -30,9 +30,7 @@ def coordinator() -> CycleTrackerCoordinator:
     store = AsyncMock()
     store.async_load = AsyncMock(return_value=None)
     store.async_save = AsyncMock()
-    with patch(
-        "custom_components.cycle_tracker.coordinator.Store", return_value=store
-    ):
+    with patch("custom_components.cycle_tracker.coordinator.Store", return_value=store):
         coord = CycleTrackerCoordinator(MagicMock(), MagicMock())
     coord.store = store
     coord._data = {"periods": []}
@@ -191,9 +189,7 @@ class TestServiceLifecycle:
         """Unloading removes both registered services."""
         await async_unload_services(fake_hass)
 
-        removed = {
-            call.args for call in fake_hass.services.async_remove.call_args_list
-        }
+        removed = {call.args for call in fake_hass.services.async_remove.call_args_list}
         assert removed == {(DOMAIN, SERVICE_LOG_START), (DOMAIN, SERVICE_LOG_END)}
 
     @pytest.mark.asyncio
@@ -221,7 +217,5 @@ class TestServiceLifecycle:
         fake_hass.services.async_remove.reset_mock()
         await unload_callback()
 
-        removed = {
-            call.args for call in fake_hass.services.async_remove.call_args_list
-        }
+        removed = {call.args for call in fake_hass.services.async_remove.call_args_list}
         assert removed == {(DOMAIN, SERVICE_LOG_START), (DOMAIN, SERVICE_LOG_END)}

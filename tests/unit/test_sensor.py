@@ -14,7 +14,10 @@ from custom_components.cycle_tracker.sensor import (
     CycleStatisticsSensor,
 )
 from custom_components.cycle_tracker.coordinator import CycleTrackerCoordinator
-from custom_components.cycle_tracker.const import DEFAULT_CYCLE_LENGTH, DEFAULT_PERIOD_LENGTH
+from custom_components.cycle_tracker.const import (
+    DEFAULT_CYCLE_LENGTH,
+    DEFAULT_PERIOD_LENGTH,
+)
 
 
 @pytest.fixture
@@ -109,7 +112,6 @@ class TestNextOvulationDateSensor:
         # last_start = 2026-10-01, cycle_length = 28, ovulation_offset = 14
         # 2026-10-01 + 14 = 2026-10-15 (if today <= 2026-10-15)
         assert sensor.native_value is not None
-        from datetime import date
         parsed = date.fromisoformat(sensor.native_value)
         assert parsed >= date.today()
 
