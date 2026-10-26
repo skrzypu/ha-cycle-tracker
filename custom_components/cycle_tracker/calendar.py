@@ -1,7 +1,6 @@
 """Calendar entity for Cycle Tracker."""
 
 from datetime import date, datetime, timedelta
-from typing import Any
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -22,10 +21,14 @@ async def async_setup_entry(
     async_add_entities([MenstrualCycleCalendar(coordinator, entry)])
 
 
-class MenstrualCycleCalendar(CoordinatorEntity[CycleTrackerCoordinator], CalendarEntity):
+class MenstrualCycleCalendar(
+    CoordinatorEntity[CycleTrackerCoordinator], CalendarEntity
+):
     """Calendar entity for menstrual cycle."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
         """Initialize the calendar."""
         super().__init__(coordinator)
         self._entry = entry
@@ -69,12 +72,14 @@ class MenstrualCycleCalendar(CoordinatorEntity[CycleTrackerCoordinator], Calenda
         for period in periods:
             start = datetime.fromisoformat(period["start_date"])
             end = datetime.fromisoformat(period["end_date"]) + timedelta(days=1)
-            events.append(CalendarEvent(
-                summary="Period",
-                start=start,
-                end=end,
-                description=f"Flow: {period.get('flow_intensity', 'medium')}",
-            ))
+            events.append(
+                CalendarEvent(
+                    summary="Period",
+                    start=start,
+                    end=end,
+                    description=f"Flow: {period.get('flow_intensity', 'medium')}",
+                )
+            )
 
         # Add predicted periods
         last_start = self.coordinator.get_last_period_start()
@@ -83,20 +88,25 @@ class MenstrualCycleCalendar(CoordinatorEntity[CycleTrackerCoordinator], Calenda
             last = date.fromisoformat(last_start)
             for i in range(1, 13):  # Next 12 cycles
                 pred_start = last + timedelta(days=cycle_length * i)
-                pred_end = pred_start + timedelta(days=self.coordinator.get_period_length())
-                events.append(CalendarEvent(
-                    summary="Predicted Period",
-                    start=datetime.combine(pred_start, datetime.min.time()),
-                    end=datetime.combine(pred_end, datetime.min.time()),
-                    description="Predicted based on average cycle length",
-                ))
+                pred_end = pred_start + timedelta(
+                    days=self.coordinator.get_period_length()
+                )
+                events.append(
+                    CalendarEvent(
+                        summary="Predicted Period",
+                        start=datetime.combine(pred_start, datetime.min.time()),
+                        end=datetime.combine(pred_end, datetime.min.time()),
+                        description="Predicted based on average cycle length",
+                    )
+                )
 
         return events
 
-    def _get_events_in_range(self, start_date: datetime, end_date: datetime) -> list[CalendarEvent]:
+    def _get_events_in_range(
+        self, start_date: datetime, end_date: datetime
+    ) -> list[CalendarEvent]:
         """Get events within a specific range."""
         all_events = self._get_events()
         return [
-            evt for evt in all_events
-            if evt.start < end_date and evt.end > start_date
+            evt for evt in all_events if evt.start < end_date and evt.end > start_date
         ]

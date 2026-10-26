@@ -58,8 +58,7 @@ custom_components/cycle_tracker/
 #### Testing (pytest)
 - `pytest-homeassistant-custom-component` for integration tests
 - Unit tests for coordinator calculations
-- Contract tests: validate JSON against `specs/ffi-contract.schema.json`
-- Fixtures in `tests/fixtures/` shared with contract tests
+- Fixtures/builders in `tests/` for shared test data
 - Mock `CycleTrackerCoordinator` for sensor/calendar tests
 
 #### Code Quality

@@ -26,13 +26,13 @@ ast_grep_search pattern='class $NAME.*Strategy' lang=python paths=["custom_compo
 ast_grep_search pattern='class $NAME.*CalendarEntity' lang=python
 ```
 
-#### Contract Testing (Future FFI Ready)
+#### Test & Fixture Navigation
 ```bash
-# JSON schema references
-grep -r "ffi-contract.schema.json" --include="*.py"
+# Persistence schema references
+grep -r "STORAGE_KEY\|STORAGE_VERSION" --include="*.py" custom_components/
 
-# FFI version constant
-grep -r "ffi_version" --include="*.py"
+# Prediction algorithm entry points
+grep -r "class .*Strategy" --include="*.py"
 
 # Shared fixture files
 ls tests/fixtures/*.json

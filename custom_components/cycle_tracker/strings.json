@@ -1,0 +1,61 @@
+{
+  "title": "Cycle Tracker",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Cycle settings",
+        "description": "Configure your cycle basics.",
+        "data": {
+          "cycle_length": "Average cycle length (days)",
+          "period_length": "Average period length (days)",
+          "last_period_start": "First day of last period"
+        }
+      },
+      "preferences": {
+        "title": "Prediction preferences",
+        "data": {
+          "prediction_algorithm": "Prediction algorithm",
+          "notification_offset_days": "Days before period to notify"
+        }
+      },
+      "notifications": {
+        "title": "Notifications",
+        "data": {
+          "enable_notifications": "Enable notifications",
+          "notification_time": "Notification time"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Cycle Tracker options",
+        "data": {
+          "cycle_length": "Average cycle length (days)",
+          "period_length": "Average period length (days)",
+          "prediction_algorithm": "Prediction algorithm",
+          "notification_offset_days": "Days before period to notify",
+          "enable_notifications": "Enable notifications",
+          "notification_time": "Notification time"
+        }
+      }
+    }
+  },
+  "selector": {
+    "prediction_algorithm": {
+      "options": {
+        "arithmetic_mean": "Arithmetic mean",
+        "weighted_moving_average": "Weighted moving average"
+      }
+    },
+    "flow_intensity": {
+      "options": {
+        "spotting": "Spotting",
+        "light": "Light",
+        "medium": "Medium",
+        "heavy": "Heavy"
+      }
+    }
+  }
+}

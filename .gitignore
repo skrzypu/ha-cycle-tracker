@@ -47,9 +47,6 @@ dmypy.json
 # ruff
 .ruff_cache/
 
-# pre-commit
-.pre-commit-config.yaml
-
 # IDE
 .vscode/
 .idea/
@@ -62,7 +59,6 @@ dmypy.json
 Thumbs.db
 
 # Project specific
-.gradle/
 build/
 *.log
 *.pot

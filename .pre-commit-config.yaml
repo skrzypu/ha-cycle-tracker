@@ -1,0 +1,32 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.0
+    hooks:
+      - id: ruff
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [types-requests, pyyaml]
+        args: [--ignore-missing-imports, --disable-error-code=call-arg, --disable-error-code=var-annotated, --explicit-package-bases]
+
+  - repo: local
+    hooks:
+      - id: python-tests
+        name: Python Tests
+        entry: bash -c 'PYTHONPATH=/home/tomek/workspace/ha-cycle-tracker pytest tests/'
+        language: system
+        pass_filenames: false
+        types: [python]

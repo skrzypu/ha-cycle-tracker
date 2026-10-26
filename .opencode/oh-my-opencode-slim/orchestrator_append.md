@@ -2,7 +2,7 @@
 
 ### Architecture Context
 - **Python HA Component** (`custom_components/cycle_tracker/`): Config flow, sensors, calendar, services, prediction algorithms (pure Python)
-- **No KMP/FFI** - all logic implemented in Python for simplicity and maintainability
+- **Pure Python only** - all logic implemented in Python for simplicity and maintainability
 
 ### Delegation Rules
 
@@ -24,9 +24,9 @@
 - **Research + Implementation**: `@api-researcher` runs first, then implementation agents use findings
 - **Test + Implementation**: `@test-engineer` writes contract tests first (TDD), then implementers make them pass
 
-### Contract Discipline
-- Shared JSON Schema (`specs/ffi-contract.schema.json`) for any future FFI needs
-- `@test-engineer` owns contract validation in CI
+### Data Contract Discipline
+- Coordinator data shape documented in `openspec/specs/` and enforced by unit tests
+- `@test-engineer` owns schema/behavior validation in CI
 
 ### Verification Gates (from skills)
 - **test-driven-development**: Write failing test first (Python: pytest)

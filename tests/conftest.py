@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, AsyncMock
 
 class MockConfigEntry:
     """Simple mock config entry for unit tests."""
+
     def __init__(self, domain, data, options=None, entry_id="test_entry_id"):
         self.domain = domain
         self.data = data

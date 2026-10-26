@@ -14,8 +14,8 @@ tests/
 ├── integration/
 │   ├── test_ha_component.py      # Full HA component with test instance
 │   └── test_services.py          # log_start, log_end services
-├── contract/
-│   └── test_ffi_contract.py      # Validate JSON against schema (future FFI)
+├── coordinator/
+│   └── test_coordinator_contract.py # Validate coordinator data shape
 ├── e2e/
 │   └── test_user_flows.py        # Simulate: log start → predict → log end
 └── fixtures/
@@ -25,11 +25,11 @@ tests/
     └── anovulatory.json          # Edge case: no ovulation phase
 ```
 
-### Contract Testing (Future FFI Ready)
-- **Shared Schema**: `specs/ffi-contract.schema.json` (JSON Schema Draft 2020-12)
-- **Python Side**: `jsonschema.validate()` on every FFI response (when FFI added)
-- **CI Gate**: Test suite fails if schema validation fails
-- **Versioning**: `ffi_version` field in all responses, bump on breaking changes
+### Coordinator Data Contract Testing
+- **Documented Shape**: coordinator data structure documented in `openspec/specs/`
+- **Python Side**: tests assert the exact keys/types the coordinator exposes to entities
+- **CI Gate**: Test suite fails if the coordinator data shape drifts
+- **Versioning**: bump the integration version on breaking data changes
 
 ### Property-Based Testing (Python - hypothesis)
 ```python
@@ -93,13 +93,6 @@ repos:
         pass_filenames: false
         always_run: true
         types: [python]
-
-      - id: contract-validation
-        name: FFI Contract Validation
-        entry: python scripts/validate_contract.py
-        language: system
-        pass_filenames: false
-        always_run: true
 ```
 
 ### CI Pipeline (GitHub Actions)

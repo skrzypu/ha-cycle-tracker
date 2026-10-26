@@ -1,18 +1,10 @@
 """Unit tests for CycleTrackerCoordinator."""
 
 import pytest
-from datetime import date, timedelta
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from custom_components.cycle_tracker.coordinator import CycleTrackerCoordinator
-from custom_components.cycle_tracker.const import (
-    DEFAULT_CYCLE_LENGTH,
-    DEFAULT_PERIOD_LENGTH,
-    DEFAULT_PREDICTION_ALGORITHM,
-    DEFAULT_NOTIFICATION_OFFSET_DAYS,
-    DEFAULT_ENABLE_NOTIFICATIONS,
-    DEFAULT_NOTIFICATION_TIME,
-)
 
 
 @pytest.fixture
@@ -52,7 +44,9 @@ def mock_store():
 @pytest.fixture
 def coordinator(mock_hass, mock_entry, mock_store):
     """Create a coordinator instance with mocked dependencies."""
-    with patch("custom_components.cycle_tracker.coordinator.Store", return_value=mock_store):
+    with patch(
+        "custom_components.cycle_tracker.coordinator.Store", return_value=mock_store
+    ):
         coord = CycleTrackerCoordinator(mock_hass, mock_entry)
         coord.store = mock_store
         return coord
@@ -115,7 +109,9 @@ class TestCycleTrackerCoordinator:
 
     def test_add_period_sorts(self, coordinator):
         """Test that periods are sorted by start date."""
-        coordinator._data = {"periods": [{"start_date": "2024-02-01", "end_date": "2024-02-05"}]}
+        coordinator._data = {
+            "periods": [{"start_date": "2024-02-01", "end_date": "2024-02-05"}]
+        }
         coordinator.add_period({"start_date": "2024-01-01", "end_date": "2024-01-05"})
         periods = coordinator.get_periods()
         assert periods[0]["start_date"] == "2024-01-01"
@@ -183,6 +179,23 @@ class TestCycleTrackerCoordinator:
         next_period = coordinator.predict_next_period("2024-01-15")
         assert next_period == "2024-01-29"
 
+    def test_predict_next_period_uses_history(self, coordinator):
+        """Test predicting next period uses history when available."""
+        coordinator._data = {
+            "periods": [
+                {"start_date": "2024-01-01", "end_date": "2024-01-05"},
+                {"start_date": "2024-01-29", "end_date": "2024-02-02"},
+                {"start_date": "2024-02-26", "end_date": "2024-03-01"},
+            ],
+            "last_period_start": "2024-02-26",
+            "cycle_length": 28,
+            "prediction_algorithm": "arithmetic_mean",
+        }
+        # Cycle lengths from history: 28, 28 -> mean = 28
+        # Last period start: 2024-02-26 + 28 days = 2024-03-25
+        next_period = coordinator.predict_next_period("2024-03-15")
+        assert next_period == "2024-03-25"
+
     def test_predict_next_period_no_last_period(self, coordinator):
         """Test predicting next period with no last period."""
         coordinator._data = {
@@ -191,6 +204,28 @@ class TestCycleTrackerCoordinator:
         }
         next_period = coordinator.predict_next_period("2024-01-15")
         assert next_period == "2024-02-12"
+
+    def test_get_next_ovulation_date(self, coordinator):
+        """Test getting next ovulation date."""
+        coordinator._data = {
+            "last_period_start": "2024-01-01",
+            "cycle_length": 28,
+        }
+        ovulation_date = coordinator.get_next_ovulation_date()
+        assert ovulation_date is not None
+        # Should be a valid ISO date string
+        parsed = date.fromisoformat(ovulation_date)
+        assert isinstance(parsed, date)
+        # Should be on or after today
+        assert parsed >= date.today()
+
+    def test_get_next_ovulation_date_no_last_period(self, coordinator):
+        """Test getting next ovulation date with no last period."""
+        coordinator._data = {
+            "last_period_start": None,
+            "cycle_length": 28,
+        }
+        assert coordinator.get_next_ovulation_date() is None
 
     def test_get_statistics_insufficient_data(self, coordinator):
         """Test statistics with insufficient data."""
@@ -205,9 +240,8 @@ class TestCycleTrackerCoordinator:
         assert stats["cycle_length_std_dev"] == 0.0
         assert stats["total_cycles_tracked"] == 1
 
-    @pytest.mark.skip(reason="Algorithm implementation in separate spec")
     def test_get_statistics_with_data(self, coordinator):
-        """Test statistics with sufficient data - placeholder for algorithm spec."""
+        """Test statistics with sufficient data."""
         coordinator._data = {
             "periods": [
                 {"start_date": "2024-01-01", "end_date": "2024-01-05"},
@@ -218,7 +252,9 @@ class TestCycleTrackerCoordinator:
             "period_length": 5,
         }
         stats = coordinator.get_statistics()
-        # Algorithm implementation will be in separate spec
-        assert "total_cycles_tracked" in stats
-        assert "average_cycle_length" in stats
-        assert "average_period_length" in stats
+        # Cycle lengths: 28, 28 (from 2024-01-01 to 2024-01-29 = 28 days, 2024-01-29 to 2024-02-26 = 28 days)
+        assert stats["total_cycles_tracked"] == 2
+        assert stats["average_cycle_length"] == 28.0
+        assert stats["average_period_length"] == 5.0
+        assert stats["shortest_cycle"] == 28
+        assert stats["longest_cycle"] == 28

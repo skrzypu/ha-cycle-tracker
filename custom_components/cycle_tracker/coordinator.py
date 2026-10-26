@@ -1,6 +1,6 @@
 """Data update coordinator for Cycle Tracker."""
 
-from datetime import timedelta
+from datetime import date, timedelta
 import logging
 from typing import Any
 
@@ -27,6 +27,7 @@ from .const import (
     DEFAULT_ENABLE_NOTIFICATIONS,
     DEFAULT_NOTIFICATION_TIME,
 )
+from .prediction import get_algorithm
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,13 +62,25 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Get default data structure."""
         return {
             "periods": [],
-            "cycle_length": self.entry.data.get(CONF_CYCLE_LENGTH, DEFAULT_CYCLE_LENGTH),
-            "period_length": self.entry.data.get(CONF_PERIOD_LENGTH, DEFAULT_PERIOD_LENGTH),
+            "cycle_length": self.entry.data.get(
+                CONF_CYCLE_LENGTH, DEFAULT_CYCLE_LENGTH
+            ),
+            "period_length": self.entry.data.get(
+                CONF_PERIOD_LENGTH, DEFAULT_PERIOD_LENGTH
+            ),
             "last_period_start": self.entry.data.get(CONF_LAST_PERIOD_START),
-            "prediction_algorithm": self.entry.data.get(CONF_PREDICTION_ALGORITHM, DEFAULT_PREDICTION_ALGORITHM),
-            "notification_offset_days": self.entry.data.get(CONF_NOTIFICATION_OFFSET_DAYS, DEFAULT_NOTIFICATION_OFFSET_DAYS),
-            "enable_notifications": self.entry.data.get(CONF_ENABLE_NOTIFICATIONS, DEFAULT_ENABLE_NOTIFICATIONS),
-            "notification_time": self.entry.data.get(CONF_NOTIFICATION_TIME, DEFAULT_NOTIFICATION_TIME),
+            "prediction_algorithm": self.entry.data.get(
+                CONF_PREDICTION_ALGORITHM, DEFAULT_PREDICTION_ALGORITHM
+            ),
+            "notification_offset_days": self.entry.data.get(
+                CONF_NOTIFICATION_OFFSET_DAYS, DEFAULT_NOTIFICATION_OFFSET_DAYS
+            ),
+            "enable_notifications": self.entry.data.get(
+                CONF_ENABLE_NOTIFICATIONS, DEFAULT_ENABLE_NOTIFICATIONS
+            ),
+            "notification_time": self.entry.data.get(
+                CONF_NOTIFICATION_TIME, DEFAULT_NOTIFICATION_TIME
+            ),
         }
 
     async def async_save_data(self) -> None:
@@ -101,12 +114,25 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Get prediction algorithm."""
         return self._data.get("prediction_algorithm", DEFAULT_PREDICTION_ALGORITHM)
 
+    def _get_cycle_lengths_from_history(self) -> list[int]:
+        """Derive cycle lengths from consecutive period start dates (oldest to newest)."""
+        periods = self.get_periods()
+        if len(periods) < 2:
+            return []
+        cycle_lengths: list[int] = []
+        for i in range(1, len(periods)):
+            prev_start = date.fromisoformat(periods[i - 1]["start_date"])
+            curr_start = date.fromisoformat(periods[i]["start_date"])
+            cycle_lengths.append((curr_start - prev_start).days)
+        return cycle_lengths
+
     def calculate_cycle_day(self, reference_date: str) -> int:
         """Calculate current cycle day."""
         last_start = self.get_last_period_start()
         if not last_start:
             return 1
         from datetime import date
+
         last = date.fromisoformat(last_start)
         ref = date.fromisoformat(reference_date)
         delta = (ref - last).days
@@ -129,16 +155,41 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return "luteal"
 
     def predict_next_period(self, reference_date: str) -> str:
-        """Predict next period start date."""
+        """Predict next period start date using history if available."""
         from datetime import date, timedelta
+
         last_start = self.get_last_period_start()
         if not last_start:
             ref = date.fromisoformat(reference_date)
             return (ref + timedelta(days=self.get_cycle_length())).isoformat()
-        
+
         last = date.fromisoformat(last_start)
+        cycle_lengths = self._get_cycle_lengths_from_history()
+        if len(cycle_lengths) >= 2:
+            # Use most recent up to 6 cycle lengths
+            recent_lengths = cycle_lengths[-6:]
+            algorithm = get_algorithm(self.get_prediction_algorithm())
+            predicted_length = algorithm(recent_lengths)
+            return (last + timedelta(days=predicted_length)).isoformat()
+
         cycle_length = self.get_cycle_length()
         return (last + timedelta(days=cycle_length)).isoformat()
+
+    def get_next_ovulation_date(self) -> str | None:
+        """Get next predicted ovulation date as ISO string."""
+        from datetime import date, timedelta
+
+        last_start = self.get_last_period_start()
+        if not last_start:
+            return None
+        last = date.fromisoformat(last_start)
+        cycle_length = self.get_cycle_length()
+        ovulation_offset = cycle_length // 2
+        next_ovulation = last + timedelta(days=ovulation_offset)
+        today = date.today()
+        while next_ovulation < today:
+            next_ovulation += timedelta(days=cycle_length)
+        return next_ovulation.isoformat()
 
     def get_statistics(self) -> dict[str, Any]:
         """Get cycle statistics."""
@@ -157,17 +208,27 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         cycle_lengths = []
         period_lengths = []
         for i in range(1, len(periods)):
-            from datetime import date
             prev_start = date.fromisoformat(periods[i - 1]["start_date"])
             curr_start = date.fromisoformat(periods[i]["start_date"])
             cycle_lengths.append((curr_start - prev_start).days)
-            period_lengths.append(periods[i - 1]["end_date"] - periods[i - 1]["start_date"] + 1)
+            prev_period_start = date.fromisoformat(periods[i - 1]["start_date"])
+            prev_period_end = date.fromisoformat(periods[i - 1]["end_date"])
+            period_lengths.append((prev_period_end - prev_period_start).days + 1)
 
         import statistics
-        avg_cycle = statistics.mean(cycle_lengths) if cycle_lengths else self.get_cycle_length()
-        avg_period = statistics.mean(period_lengths) if period_lengths else self.get_period_length()
+
+        avg_cycle = (
+            statistics.mean(cycle_lengths) if cycle_lengths else self.get_cycle_length()
+        )
+        avg_period = (
+            statistics.mean(period_lengths)
+            if period_lengths
+            else self.get_period_length()
+        )
         std_cycle = statistics.stdev(cycle_lengths) if len(cycle_lengths) > 1 else 0.0
-        std_period = statistics.stdev(period_lengths) if len(period_lengths) > 1 else 0.0
+        std_period = (
+            statistics.stdev(period_lengths) if len(period_lengths) > 1 else 0.0
+        )
 
         return {
             "average_cycle_length": round(avg_cycle, 1),
@@ -175,6 +236,10 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "cycle_length_std_dev": round(std_cycle, 1),
             "period_length_std_dev": round(std_period, 1),
             "total_cycles_tracked": len(cycle_lengths),
-            "shortest_cycle": min(cycle_lengths) if cycle_lengths else self.get_cycle_length(),
-            "longest_cycle": max(cycle_lengths) if cycle_lengths else self.get_cycle_length(),
+            "shortest_cycle": min(cycle_lengths)
+            if cycle_lengths
+            else self.get_cycle_length(),
+            "longest_cycle": max(cycle_lengths)
+            if cycle_lengths
+            else self.get_cycle_length(),
         }

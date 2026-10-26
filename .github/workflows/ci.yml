@@ -32,9 +32,6 @@ jobs:
       - name: Run Python Tests
         run: pytest tests/ -v
 
-      - name: Validate FFI Contract
-        run: python scripts/validate_contract.py
-
       - name: Upload test reports
         uses: actions/upload-artifact@v4
         if: always()

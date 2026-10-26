@@ -1,6 +1,11 @@
 """Services for Cycle Tracker."""
 
-from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.core import (
+    HomeAssistant,
+    ServiceCall,
+    ServiceResponse,
+    SupportsResponse,
+)
 from homeassistant.helpers import config_validation as cv
 import voluptuous as vol
 
@@ -8,20 +13,24 @@ from .const import (
     DOMAIN,
     SERVICE_LOG_START,
     SERVICE_LOG_END,
-    CONF_CYCLE_LENGTH,
-    CONF_PERIOD_LENGTH,
 )
 from .coordinator import CycleTrackerCoordinator
 
 
-SERVICE_LOG_START_SCHEMA = vol.Schema({
-    vol.Required("date"): cv.date,
-    vol.Optional("flow_intensity", default="medium"): vol.In(["spotting", "light", "medium", "heavy"]),
-})
+SERVICE_LOG_START_SCHEMA = vol.Schema(
+    {
+        vol.Required("date"): cv.date,
+        vol.Optional("flow_intensity", default="medium"): vol.In(
+            ["spotting", "light", "medium", "heavy"]
+        ),
+    }
+)
 
-SERVICE_LOG_END_SCHEMA = vol.Schema({
-    vol.Required("date"): cv.date,
-})
+SERVICE_LOG_END_SCHEMA = vol.Schema(
+    {
+        vol.Required("date"): cv.date,
+    }
+)
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
@@ -29,7 +38,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_log_start(call: ServiceCall) -> ServiceResponse:
         """Handle log_start service call."""
-        coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][call.config_entry.entry_id]
+        coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][
+            call.config_entry.entry_id
+        ]
         date_str = call.data["date"].isoformat()
         flow_intensity = call.data["flow_intensity"]
 
@@ -40,11 +51,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             periods[-1]["flow_intensity"] = flow_intensity
         else:
             # Add new period
-            coordinator.add_period({
-                "start_date": date_str,
-                "end_date": date_str,
-                "flow_intensity": flow_intensity,
-            })
+            coordinator.add_period(
+                {
+                    "start_date": date_str,
+                    "end_date": date_str,
+                    "flow_intensity": flow_intensity,
+                }
+            )
 
         await coordinator.async_save_data()
         coordinator.async_set_updated_data(coordinator._data)
@@ -53,7 +66,9 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_log_end(call: ServiceCall) -> ServiceResponse:
         """Handle log_end service call."""
-        coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][call.config_entry.entry_id]
+        coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][
+            call.config_entry.entry_id
+        ]
         date_str = call.data["date"].isoformat()
 
         periods = coordinator.get_periods()

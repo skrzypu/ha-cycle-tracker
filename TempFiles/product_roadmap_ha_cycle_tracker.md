@@ -1,8 +1,8 @@
 # Product Roadmap: Home Assistant Menstrual Cycle Tracker Integration
 
-**Produkt:** Custom Component dla Home Assistant (`custom_components/cycle_tracker`)  
-**Architektura:** Open Spec Kit + HACS  
-**Rola:** Product Owner / Home Assistant Integration Specialist  
+**Produkt:** Custom Component dla Home Assistant (`custom_components/cycle_tracker`)
+**Architektura:** Python custom component + OpenSpec + HACS
+**Rola:** Product Owner / Home Assistant Integration Specialist
 
 ---
 
@@ -11,26 +11,30 @@ Stworzenie prywatnej, lokalnej i w pełni zintegrowanej z ekosystemem Home Assis
 
 ---
 
-## 2. Architektura Open Spec Kit
-Projekt prowadzony jest w oparciu o Open Spec Kit w repozytorium GitHub.
+## 2. Architektura Projektu
+Projekt jest w pełni napisany w Pythonie i oparty na modelu Custom Integration Home Assistant. Zmiany specyfikacji i planu są dokumentowane w katalogu `openspec/` (propozycje zmian: `openspec/changes/<nazwa>/`), a wymagania w `openspec/specs/`.
 
 ### Struktura Repozytorium:
 ```text
 ha-cycle-tracker/
 ├── .github/
-│   └── workflows/          # CI/CD (HACS validation, pytest, linting)
+│   └── workflows/          # CI/CD (pytest, ruff, mypy, HACS validation)
 ├── custom_components/
-│   └── cycle_tracker/      # Kod źródłowy komponentu
-│       ├── __init__.py
+│   └── cycle_tracker/      # Kod źródłowy komponentu (Python)
+│       ├── __init__.py     # Setup, koordynator, rejestracja usług
+│       ├── config_flow.py  # Config Flow (basic, preferences, notifications)
+│       ├── coordinator.py  # DataUpdateCoordinator, obliczenia cyklu, statystyki
+│       ├── sensor.py       # 7 encji sensorowych
+│       ├── calendar.py     # Encja kalendarza cyklu
+│       ├── services.py     # Obsługa log_start / log_end
+│       ├── const.py        # Stałe, klucze konfiguracji
 │       ├── manifest.json
-│       ├── sensor.py
-│       ├── calendar.py
+│       ├── strings.json
+│       ├── translations/
 │       └── services.yaml
-├── specs/                  # Open Spec Kit
-│   ├── core_entities.spec.yaml
-│   ├── prediction_engine.spec.yaml
-│   ├── integrations.spec.yaml
-│   └── automations_api.spec.yaml
+├── tests/                  # Testy pytest + pytest-homeassistant-custom-component
+├── openspec/               # Specyfikacje i propozycje zmian
+├── .pre-commit-config.yaml # ruff, ruff-format, mypy, python-tests
 ├── hacs.json
 └── README.md
 ```
@@ -103,7 +107,7 @@ ha-cycle-tracker/
 ---
 
 ## 4. Kryteria Akceptacji MVP (Definition of Done dla Fazy 1)
-1. Repozytorium na GitHub posiada pełną strukturę specyfikacji Open Spec Kit.
+1. Repozytorium na GitHub posiada pełną strukturę specyfikacji w katalogu `openspec/`.
 2. Integrację można dodać do Home Assistant za pomocą własnego repozytorium HACS.
 3. Użytkownik może wywołać usługi `log_start` oraz `log_end`, a dane zapisują się w lokalnej bazie HA.
 4. Sensor `sensor.next_period_date` poprawnie kalkuluje datę na podstawie przynajmniej średniej z ostatnich 3 cykli.

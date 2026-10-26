@@ -8,7 +8,21 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN, ATTR_CYCLE_DAY, ATTR_CYCLE_PHASE, ATTR_NEXT_PERIOD_DATE, ATTR_NEXT_OVULATION_DATE, ATTR_DAYS_UNTIL_PERIOD, ATTR_DAYS_UNTIL_OVULATION, ATTR_PREDICTION_CONFIDENCE, ATTR_AVERAGE_CYCLE_LENGTH, ATTR_AVERAGE_PERIOD_LENGTH, ATTR_STD_DEV_CYCLE, ATTR_STD_DEV_PERIOD, ATTR_TOTAL_CYCLES_TRACKED
+from .const import (
+    DOMAIN,
+    ATTR_CYCLE_DAY,
+    ATTR_CYCLE_PHASE,
+    ATTR_NEXT_PERIOD_DATE,
+    ATTR_NEXT_OVULATION_DATE,
+    ATTR_DAYS_UNTIL_PERIOD,
+    ATTR_DAYS_UNTIL_OVULATION,
+    ATTR_PREDICTION_CONFIDENCE,
+    ATTR_AVERAGE_CYCLE_LENGTH,
+    ATTR_AVERAGE_PERIOD_LENGTH,
+    ATTR_STD_DEV_CYCLE,
+    ATTR_STD_DEV_PERIOD,
+    ATTR_TOTAL_CYCLES_TRACKED,
+)
 from .coordinator import CycleTrackerCoordinator
 
 
@@ -20,21 +34,29 @@ async def async_setup_entry(
     """Set up Cycle Tracker sensors."""
     coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities([
-        CycleDaySensor(coordinator, entry),
-        CyclePhaseSensor(coordinator, entry),
-        NextPeriodDateSensor(coordinator, entry),
-        NextOvulationDateSensor(coordinator, entry),
-        DaysUntilPeriodSensor(coordinator, entry),
-        DaysUntilOvulationSensor(coordinator, entry),
-        CycleStatisticsSensor(coordinator, entry),
-    ])
+    async_add_entities(
+        [
+            CycleDaySensor(coordinator, entry),
+            CyclePhaseSensor(coordinator, entry),
+            NextPeriodDateSensor(coordinator, entry),
+            NextOvulationDateSensor(coordinator, entry),
+            DaysUntilPeriodSensor(coordinator, entry),
+            DaysUntilOvulationSensor(coordinator, entry),
+            CycleStatisticsSensor(coordinator, entry),
+        ]
+    )
 
 
 class CycleTrackerSensor(CoordinatorEntity[CycleTrackerCoordinator], SensorEntity):
     """Base class for Cycle Tracker sensors."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry, name: str, unique_id_suffix: str) -> None:
+    def __init__(
+        self,
+        coordinator: CycleTrackerCoordinator,
+        entry: ConfigEntry,
+        name: str,
+        unique_id_suffix: str,
+    ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._entry = entry
@@ -51,7 +73,9 @@ class CycleTrackerSensor(CoordinatorEntity[CycleTrackerCoordinator], SensorEntit
 class CycleDaySensor(CycleTrackerSensor):
     """Sensor for current cycle day."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
         super().__init__(coordinator, entry, "Cycle Day", "cycle_day")
         self._attr_icon = "mdi:calendar-clock"
         self._attr_native_unit_of_measurement = "day"
@@ -75,7 +99,9 @@ class CycleDaySensor(CycleTrackerSensor):
 class CyclePhaseSensor(CycleTrackerSensor):
     """Sensor for current cycle phase."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
         super().__init__(coordinator, entry, "Cycle Phase", "cycle_phase")
         self._attr_icon = "mdi:heart-pulse"
 
@@ -98,7 +124,9 @@ class CyclePhaseSensor(CycleTrackerSensor):
 class NextPeriodDateSensor(CycleTrackerSensor):
     """Sensor for next predicted period date."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
         super().__init__(coordinator, entry, "Next Period Date", "next_period_date")
         self._attr_device_class = SensorDeviceClass.DATE
         self._attr_icon = "mdi:calendar-star"
@@ -122,8 +150,12 @@ class NextPeriodDateSensor(CycleTrackerSensor):
 class NextOvulationDateSensor(CycleTrackerSensor):
     """Sensor for next predicted ovulation date."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
-        super().__init__(coordinator, entry, "Next Ovulation Date", "next_ovulation_date")
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(
+            coordinator, entry, "Next Ovulation Date", "next_ovulation_date"
+        )
         self._attr_device_class = SensorDeviceClass.DATE
         self._attr_icon = "mdi:egg"
 
@@ -133,6 +165,7 @@ class NextOvulationDateSensor(CycleTrackerSensor):
         if not self.coordinator.get_last_period_start():
             return None
         from datetime import date, timedelta
+
         last_start = self.coordinator.get_last_period_start()
         if not last_start:
             return None
@@ -155,7 +188,9 @@ class NextOvulationDateSensor(CycleTrackerSensor):
 class DaysUntilPeriodSensor(CycleTrackerSensor):
     """Sensor for days until next period."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
         super().__init__(coordinator, entry, "Days Until Period", "days_until_period")
         self._attr_icon = "mdi:calendar-minus"
         self._attr_native_unit_of_measurement = "days"
@@ -166,6 +201,7 @@ class DaysUntilPeriodSensor(CycleTrackerSensor):
         if not self.coordinator.get_last_period_start():
             return None
         from datetime import date
+
         next_period = self.coordinator.predict_next_period(date.today().isoformat())
         if not next_period:
             return None
@@ -184,8 +220,12 @@ class DaysUntilPeriodSensor(CycleTrackerSensor):
 class DaysUntilOvulationSensor(CycleTrackerSensor):
     """Sensor for days until next ovulation."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
-        super().__init__(coordinator, entry, "Days Until Ovulation", "days_until_ovulation")
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(
+            coordinator, entry, "Days Until Ovulation", "days_until_ovulation"
+        )
         self._attr_icon = "mdi:calendar-plus"
         self._attr_native_unit_of_measurement = "days"
 
@@ -195,6 +235,7 @@ class DaysUntilOvulationSensor(CycleTrackerSensor):
         if not self.coordinator.get_last_period_start():
             return None
         from datetime import date
+
         next_ovulation = self.coordinator.get_next_ovulation_date()
         if not next_ovulation:
             return None
@@ -213,7 +254,9 @@ class DaysUntilOvulationSensor(CycleTrackerSensor):
 class CycleStatisticsSensor(CycleTrackerSensor):
     """Sensor for cycle statistics."""
 
-    def __init__(self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry) -> None:
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
         super().__init__(coordinator, entry, "Statistics", "statistics")
         self._attr_icon = "mdi:chart-line"
 
