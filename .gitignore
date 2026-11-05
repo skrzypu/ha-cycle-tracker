@@ -65,5 +65,9 @@ build/
 *.pot
 *.mo
 
+# Secrets
+.env
+*.env
+
 # Home Assistant
 custom_components/__pycache__/
