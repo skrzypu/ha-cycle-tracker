@@ -21,12 +21,3 @@ repos:
       - id: mypy
         additional_dependencies: [types-requests, pyyaml]
         args: [--ignore-missing-imports, --disable-error-code=call-arg, --disable-error-code=var-annotated, --explicit-package-bases]
-
-  - repo: local
-    hooks:
-      - id: python-tests
-        name: Python Tests
-        entry: bash -c 'PY=".venv/bin/python"; [ -x "$PY" ] || PY=python3; PYTHONPATH="${PWD}" exec "$PY" -m pytest tests/'
-        language: system
-        pass_filenames: false
-        types: [python]

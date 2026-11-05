@@ -136,21 +136,16 @@ Cycle Tracker has no external dependencies and makes no network requests. Period
 
 ## Development
 
-Development and tests require **CPython 3.13+** on the Home Assistant **2026.1.0** baseline (the test toolchain pins `homeassistant==2026.1.0` through `pytest-homeassistant-custom-component==0.13.305` in `requirements-dev.txt`):
+Development requires **CPython 3.13+** on the Home Assistant **2026.1.0** baseline (the dev toolchain pins `homeassistant==2026.1.0` through `pytest-homeassistant-custom-component==0.13.305` in `requirements-dev.txt`):
 
 ```bash
 uv venv .venv --python 3.13
 uv pip install --python .venv/bin/python -r requirements-dev.txt
-PYTHONPATH=custom_components .venv/bin/pytest tests/ -q
 ```
 
-Lint and type checks run through pre-commit (`ruff`, `ruff-format`, `mypy --strict`):
+The test suite is currently being rebuilt from the roadmap specifications; the previous unit suite was removed and is preserved in git history. Until tests return, `pre-commit run --all-files` (`ruff`, `ruff-format`, `mypy`) is the local quality gate.
 
-```bash
-pre-commit run --all-files
-```
-
-The GitHub Actions workflow in `.github/workflows/` runs the test suite and the HACS and Hassfest validators on every push and pull request.
+The GitHub Actions workflow in `.github/workflows/` runs the pre-commit hooks on every push and pull request, and a separate workflow runs the HACS and Hassfest validators.
 
 ## License
 

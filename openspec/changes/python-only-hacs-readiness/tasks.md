@@ -11,8 +11,8 @@
 
 ## 2. Home Assistant 2026.1.0 baseline
 
-- [x] 2.1 Pin `pytest-homeassistant-custom-component` (and related HA dev tooling) to the release that ships HA 2026.1.0; verify with `.venv/bin/pip show pytest-homeassistant-custom-component` and a version print of `homeassistant.const` — **DONE: `requirements-dev.txt` pins `pytest-homeassistant-custom-component==0.13.305` (which pins `homeassistant==2026.1.0`, requires Python >= 3.13); `.venv` rebuilt on CPython 3.13.13 and verified `homeassistant.const.__version__ == 2026.1.0`; CI moved to Python 3.13 and installs `requirements-dev.txt` instead of unpinned packages. The HA runtime itself lives on a separate server and is not needed for this pin.**
-- [x] 2.2 Suite green on the HA 2026.1.0 baseline — **DONE: `pytest tests/ -q` → 55 passed on CPython 3.13.13 / HA 2026.1.0. Drift was confined to the test harness: `pytest.ini` needs `asyncio_mode = auto` (otherwise PHCC's `hass` fixture resolves to an async generator) and `tests/conftest.py` needs the frame helper set up (`homeassistant.helpers.frame.async_setup`), which HA 2026.1 requires before any integration object is constructed. No production code changed.**
+- [x] 2.1 Pin `pytest-homeassistant-custom-component` (and related HA dev tooling) to the release that ships HA 2026.1.0; verify with `.venv/bin/pip show pytest-homeassistant-custom-component` and a version print of `homeassistant.const` — **DONE: `requirements-dev.txt` pins `pytest-homeassistant-custom-component==0.13.305` (which pins `homeassistant==2026.1.0`, requires Python >= 3.13); `.venv` rebuilt on CPython 3.13.13 and verified `homeassistant.const.__version__ == 2026.1.0`; CI moved to Python 3.13. The HA runtime itself lives on a separate server and is not needed for this pin.**
+- [x] 2.2 Suite green on the HA 2026.1.0 baseline — **DONE at closure: `pytest tests/ -q` → 55 passed on CPython 3.13.13 / HA 2026.1.0, with drift confined to the test harness (`asyncio_mode = auto`, `frame.async_setup`), no production code changed. The suite was afterwards removed by project decision (see 5.7), so this evidence is historical; the pin and the baseline env remain in place for the roadmap.**
 
 ## 3. Prediction from history and ovulation fix
 
@@ -34,7 +34,7 @@
 - [x] 5.4 Add `brand/icon.png` (256×256) and `brand/icon@2x.png` (512×512); verify dimensions with an image check (e.g. `file`/PIL)
 - [x] 5.5 Write a portfolio-grade `README.md` with install (HACS custom repository) and usage instructions; verify the documented install steps match the shipped files
 - [x] 5.6 Add `.github/workflows/validate.yml` running `hacs/action` (`category: integration`) and `home-assistant/actions/hassfest@master`; verify both jobs pass on a test push/PR
-- [ ] 5.7 Add config-flow and calendar tests (steps, defaults, created entry; event range filtering); verify `pytest tests/ -q` covers them — **PENDING (wave 2)**
+- [ ] 5.7 Add config-flow and calendar tests (steps, defaults, created entry; event range filtering); verify `pytest tests/ -q` covers them — **DEFERRED: the whole test suite (`tests/`, `pytest.ini`, the `python-tests` pre-commit hook and the CI test step) was removed by project decision on 2026-11-05 because the project is still at skeleton stage and tests encoded behaviour the specs do not yet define. Tests will be reintroduced from the roadmap specifications; the earlier calendar/config-flow drafts are kept outside the repo in `/tmp/opencode/cycle-tracker-wip/` and the deleted unit suite is preserved in git history (commit 69cb34d).**
 
 ## 6. Release and repository metadata
 
