@@ -11,8 +11,8 @@
 
 ## 2. Home Assistant 2026.1.0 baseline
 
-- [ ] 2.1 Pin `pytest-homeassistant-custom-component` (and related HA dev tooling) to the release that ships HA 2026.1.0; verify with `.venv/bin/pip show pytest-homeassistant-custom-component` and a version print of `homeassistant.const` — **BLOCKED: HA 2026.1.0 not available in this environment's package index (max is 2025.1.4)**
-- [ ] 2.2 Run the full suite against the 2026.1.0 baseline, fix any API drift (e.g. deprecated config-entry/entity helpers), and verify `pytest tests/ -q` is green — **BLOCKED: same reason**
+- [ ] 2.1 Pin `pytest-homeassistant-custom-component` (and related HA dev tooling) to the release that ships HA 2026.1.0; verify with `.venv/bin/pip show pytest-homeassistant-custom-component` and a version print of `homeassistant.const` — **BLOCKED: this dev environment runs no Home Assistant; the HA 2026.1.0 instance lives on a separate server, and the local package index tops out at HA 2025.1.4. Toolchain pin stays a separate follow-up; `manifest.json`/`hacs.json` keep `homeassistant: 2026.1.0`.**
+- [ ] 2.2 Run the full suite against the 2026.1.0 baseline, fix any API drift (e.g. deprecated config-entry/entity helpers), and verify `pytest tests/ -q` is green — **BLOCKED: verification must run against the 2026.1.0 HA host (or a dev env with that package release); local suite currently runs on HA 2025.1.4 and is green**
 
 ## 3. Prediction from history and ovulation fix
 
