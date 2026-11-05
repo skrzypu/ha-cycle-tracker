@@ -11,8 +11,8 @@
 
 ## 2. Home Assistant 2026.1.0 baseline
 
-- [ ] 2.1 Pin `pytest-homeassistant-custom-component` (and related HA dev tooling) to the release that ships HA 2026.1.0; verify with `.venv/bin/pip show pytest-homeassistant-custom-component` and a version print of `homeassistant.const` — **BLOCKED: this dev environment runs no Home Assistant; the HA 2026.1.0 instance lives on a separate server, and the local package index tops out at HA 2025.1.4. Toolchain pin stays a separate follow-up; `manifest.json`/`hacs.json` keep `homeassistant: 2026.1.0`.**
-- [ ] 2.2 Run the full suite against the 2026.1.0 baseline, fix any API drift (e.g. deprecated config-entry/entity helpers), and verify `pytest tests/ -q` is green — **BLOCKED: verification must run against the 2026.1.0 HA host (or a dev env with that package release); local suite currently runs on HA 2025.1.4 and is green**
+- [x] 2.1 Pin `pytest-homeassistant-custom-component` (and related HA dev tooling) to the release that ships HA 2026.1.0; verify with `.venv/bin/pip show pytest-homeassistant-custom-component` and a version print of `homeassistant.const` — **DONE: `requirements-dev.txt` pins `pytest-homeassistant-custom-component==0.13.305` (which pins `homeassistant==2026.1.0`, requires Python >= 3.13); `.venv` rebuilt on CPython 3.13.13 and verified `homeassistant.const.__version__ == 2026.1.0`; CI moved to Python 3.13 and installs `requirements-dev.txt` instead of unpinned packages. The HA runtime itself lives on a separate server and is not needed for this pin.**
+- [x] 2.2 Suite green on the HA 2026.1.0 baseline — **DONE: `pytest tests/ -q` → 55 passed on CPython 3.13.13 / HA 2026.1.0. Drift was confined to the test harness: `pytest.ini` needs `asyncio_mode = auto` (otherwise PHCC's `hass` fixture resolves to an async generator) and `tests/conftest.py` needs the frame helper set up (`homeassistant.helpers.frame.async_setup`), which HA 2026.1 requires before any integration object is constructed. No production code changed.**
 
 ## 3. Prediction from history and ovulation fix
 

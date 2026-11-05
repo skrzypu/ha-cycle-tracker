@@ -1,5 +1,20 @@
 import pytest
+import pytest_asyncio
 from unittest.mock import MagicMock, AsyncMock
+
+from homeassistant.helpers import frame
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def ha_frame_helper(hass):
+    """Set up the Home Assistant frame helper before any HA object is built.
+
+    Home Assistant 2026.1 raises ``RuntimeError: Frame helper not set up`` from
+    ``homeassistant.helpers.frame.report_usage`` when integration code is
+    exercised outside a running Home Assistant instance, which is exactly what
+    these unit tests do.
+    """
+    frame.async_setup(hass)
 
 
 class MockConfigEntry:
