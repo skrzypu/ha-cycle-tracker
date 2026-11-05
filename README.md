@@ -136,9 +136,11 @@ Cycle Tracker has no external dependencies and makes no network requests. Period
 
 ## Development
 
-Create a virtual environment, install the development dependencies, and run the test suite from the repository root:
+Development and tests require **CPython 3.13+** on the Home Assistant **2026.1.0** baseline (the test toolchain pins `homeassistant==2026.1.0` through `pytest-homeassistant-custom-component==0.13.305` in `requirements-dev.txt`):
 
 ```bash
+uv venv .venv --python 3.13
+uv pip install --python .venv/bin/python -r requirements-dev.txt
 PYTHONPATH=custom_components .venv/bin/pytest tests/ -q
 ```
 
