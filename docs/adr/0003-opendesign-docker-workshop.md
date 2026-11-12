@@ -1,11 +1,11 @@
 ---
 id: ADR-0003
 title: OpenDesign runs as a Docker workshop, not a nested agent
-status: accepted
+status: superseded
 date: 2026-11-09
 deciders: []
 supersedes: null
-superseded-by: null
+superseded-by: "ADR-0007"
 related: []
 ---
 

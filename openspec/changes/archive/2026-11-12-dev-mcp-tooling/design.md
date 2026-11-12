@@ -86,10 +86,10 @@ without Read-only. Exact tool names are recorded after the first successful
 connection, because Home Assistant exposes the tools of the configured LLM API
 and names can change between versions.
 
-**7. The HA host is a placeholder until the network is known.**
-The config uses `http://<HA_HOST>:8123/api/mcp`. Rationale: the user changed
-networks and will supply the address separately; a placeholder keeps the change
-unblocked and makes the required edit obvious.
+**7. The HA host is recorded from the user's current network.**
+The config uses `http://192.168.0.215:8123/api/mcp`. Rationale: the user
+supplied the address — Home Assistant `2026.2.3` on the local network. The URL
+stays in a single place so it is easy to update when the network changes.
 
 **8. Repository stays the source of truth.**
 OpenDesign container data is ephemeral and not a project store; final card
@@ -102,7 +102,7 @@ repository and is referenced by path only.
   debugging session; the token is not committed.
 - **Administrator-scoped token leakage** → file outside the repository, mode
   `600`, rotate if exposed, and never paste it into a prompt or commit.
-- **Home Assistant URL changes with the network** → single placeholder in one
+- **Home Assistant URL changes with the network** → single URL in one
   file; update the URL and restart the session.
 - **Read-only misunderstood as privacy** → documented explicitly in the README
   and in ADR-0002.
@@ -125,7 +125,5 @@ repository and is referenced by path only.
 
 ## Open Questions
 
-- The Home Assistant base URL and version (placeholder until the user supplies
-  them).
 - Whether to pin the OpenDesign image by digest instead of `latest`.
 - Exact MCP tool names exposed by the configured Home Assistant LLM API.

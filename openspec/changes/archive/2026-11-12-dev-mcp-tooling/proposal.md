@@ -21,8 +21,8 @@ tribal knowledge, so it is not repeatable.
   enablement and read-only mode, long-lived token creation and storage, Docker
   installation, the OpenDesign container run command, and how to enable each
   MCP entry for a debugging session.
-- Record the Home Assistant host and version as a placeholder (`<HA_HOST>`)
-  until the user provides the current network address.
+- Record the Home Assistant host and version supplied by the user:
+  `http://192.168.0.215:8123` (version `2026.2.3`).
 - No product or runtime behavior changes: the integration keeps running fully
   local under ADR-0001.
 

@@ -147,6 +147,100 @@ The test suite is currently being rebuilt from the roadmap specifications; the p
 
 The GitHub Actions workflow in `.github/workflows/` runs the pre-commit hooks on every push and pull request, and a separate workflow runs the HACS and Hassfest validators.
 
+## Development tooling
+
+Two opt-in MCP servers are configured in `opencode.json` for debugging against a
+live Home Assistant instance and previewing the Lovelace card in OpenDesign. Both
+entries are `disabled: true` by default and are turned on only for a specific
+session.
+
+> **Data-exposure warning.** Enabling the Home Assistant MCP server sends entity
+> states, attributes, history, and logs to the model provider. Home Assistant's
+> Read-only mode limits writes, not exposure. Keep the entry disabled unless you
+> are actively debugging.
+
+### Home Assistant MCP (read-only)
+
+Rationale: [ADR-0002](docs/adr/0002-read-only-ha-mcp-development-tooling.md),
+[ADR-0008](docs/adr/0008-home-assistant-mcp-read-only-core-version.md).
+
+1. In Home Assistant, create an administrator **long-lived access token**:
+   **Profile → Security → Long-lived access tokens → Create token**.
+2. Store the token outside the repository:
+   ```bash
+   mkdir -p ~/.secrets && chmod 700 ~/.secrets
+   printf '%s' 'YOUR_TOKEN' > ~/.secrets/ha_mcp_token
+   chmod 600 ~/.secrets/ha_mcp_token
+   ```
+   The config references it via `{file:~/.secrets/ha_mcp_token}`, so the token
+   value itself never enters `opencode.json`.
+3. Add the **Model Context Protocol** integration (the menu entries below only
+   appear after this). Either:
+   - **Settings → System → AI** → select **Enable** on the **Model Context
+     Protocol** card, or
+   - **Settings → Devices & services → Add Integration → Model Context
+     Protocol** and follow the setup.
+   Then copy the **Main URL** (`/api/mcp`). Requires Home Assistant 2025.2+.
+4. Enable **Read-only**: **Settings → Devices & services → Model Context
+   Protocol → Configure → Read-only** on. (The Read-only option requires
+   Home Assistant 2026.10 or newer.)
+
+Verify the token and endpoint — substitute `<HA_HOST>` with your Home Assistant
+address (it must match `mcp.servers.homeassistant.url`, which uses the same
+placeholder):
+
+```bash
+curl -fsS -H "Authorization: Bearer $(cat ~/.secrets/ha_mcp_token)" http://<HA_HOST>:8123/api/
+```
+
+To enable it for a debugging session, replace `<HA_HOST>` in
+`mcp.servers.homeassistant.url` with your instance's address, set `"disabled":
+false`, and restart opencode; set it back to `true` when done.
+
+### OpenDesign (Docker)
+
+Rationale: [ADR-0007](docs/adr/0007-opendesign-mcp-explicit-daemon-url.md)
+(supersedes ADR-0003).
+
+1. Install Docker Engine (Ubuntu/WSL: `sudo apt-get install -y docker.io`), add
+   your user to the `docker` group, then log out and back in.
+2. Start the container. The named volume `open-design-data` is mounted at the
+   container's data directory `/app/.od`, and the daemon listens on port `7456`:
+   ```bash
+   docker run -d --name open-design --restart unless-stopped \
+     -p 127.0.0.1:7456:7456 \
+     -v open-design-data:/app/.od \
+     -e OD_BIND_HOST=0.0.0.0 \
+     -e OD_DISABLE_API_AUTH=1 \
+     ghcr.io/nexu-io/od:latest
+   ```
+3. Verify the web surface: `curl -fsS http://127.0.0.1:7456/` returns success.
+
+The MCP server is a stdio process reached through `docker exec`. It must pass
+`--daemon-url http://127.0.0.1:7456` explicitly, because daemon auto-discovery
+does not work through `docker exec`; this is already set in
+`mcp.servers.opendesign`.
+
+To enable it for a session, set `"disabled": false` on `mcp.servers.opendesign`
+and restart opencode.
+
+The `opendesign` MCP server exposes 22 tools:
+- **Read** (12): `list_projects`, `get_active_context`, `get_artifact`,
+  `get_project`, `get_file`, `search_files`, `list_files`, `list_skills`,
+  `list_plugins`, `list_agents`, `get_run`, `get_vela_login_status`.
+- **Write** (8): `collect_brief`, `confirm_brief`, `create_artifact`,
+  `write_file`, `create_project`, `start_run`, `cancel_run`, `start_vela_login`.
+- **Destructive** (2, denied by the `opendesign_delete_*` permission rule):
+  `delete_file`, `delete_project`.
+
+### Secrets hygiene
+
+- The token lives at `~/.secrets/ha_mcp_token` (outside the repository, mode
+  `600`). To rotate it, create a new token in Home Assistant, overwrite the
+  file, and re-verify with the `curl` command above.
+- Run `git grep -n "Bearer "` to confirm no token value is committed; only the
+  `{file:~/.secrets/ha_mcp_token}` reference should appear.
+
 ## License
 
 Released under the [MIT License](LICENSE). Copyright (c) 2026 skrzypu.

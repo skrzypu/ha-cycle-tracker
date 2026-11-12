@@ -36,13 +36,35 @@
     { "action": "subagent", "resource": "*", "effect": "allow" },
     { "action": "shell", "resource": "*", "effect": "ask" },
     { "action": "webfetch", "resource": "*", "effect": "ask" },
-    { "action": "websearch", "resource": "*", "effect": "ask" }
+    { "action": "websearch", "resource": "*", "effect": "ask" },
+    { "action": "homeassistant_*", "resource": "*", "effect": "allow" },
+    { "action": "opendesign_*", "resource": "*", "effect": "allow" },
+    { "action": "homeassistant_*call_service*", "resource": "*", "effect": "deny" },
+    { "action": "opendesign_delete_*", "resource": "*", "effect": "deny" }
   ],
   "agents": {
     "orchestrator": {
       "mode": "primary",
       "model": "opencode/deepseek-v4.1-flash-free#high",
       "description": "Main orchestrator for ha-cycle-tracker"
+    }
+  },
+  "mcp": {
+    "servers": {
+      "homeassistant": {
+        "type": "remote",
+        "url": "http://<HA_HOST>:8123/api/mcp",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {file:~/.secrets/ha_mcp_token}"
+        },
+        "disabled": true
+      },
+      "opendesign": {
+        "type": "local",
+        "command": ["docker", "exec", "-i", "open-design", "node", "/app/apps/daemon/dist/cli.js", "mcp", "--daemon-url", "http://127.0.0.1:7456"],
+        "disabled": true
+      }
     }
   }
 }
