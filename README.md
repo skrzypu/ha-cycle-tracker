@@ -60,6 +60,10 @@ Cycle lengths are derived from the differences between consecutive recorded peri
 
 Entities are recalculated every 6 hours and refreshed immediately whenever a period is logged.
 
+For a full explanation of how prediction works — the phases, the prediction
+windows, and what confidence means — see the
+[user guide](docs/guide/algorithms.md).
+
 ## Entities
 
 All entities are grouped under a single **Cycle Tracker** device.

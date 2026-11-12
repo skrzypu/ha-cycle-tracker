@@ -34,6 +34,14 @@ The dependency rule applies: source dependencies point inward, toward the
 domain. The domain does not import Home Assistant, `aiohttp`, `voluptuous`, or
 any storage API.
 
+Source dependencies point inward:
+
+```mermaid
+flowchart LR
+    A[Adapters<br/>HA entities, services, storage, Sheets] -->|depends on| B[Use cases]
+    B -->|depends on| C[Domain<br/>pure entities, no framework]
+```
+
 ### Layers
 
 | Layer | Responsibility | May depend on |

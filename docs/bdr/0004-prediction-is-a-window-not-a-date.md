@@ -55,6 +55,27 @@ The rules that make up that promise:
 - **Wording:** must not read as a contraceptive guarantee. The exact copy is
   deferred to the card work.
 
+The windows sit on the cycle as follows (illustrative 28-day cycle):
+
+```mermaid
+gantt
+    title Prediction windows (illustrative 28-day cycle)
+    dateFormat  YYYY-MM-DD
+    axisFormat  %d %b
+    section Fertility
+    Ovulation centre          :milestone, 2026-11-15, 0d
+    Ovulation window (±2)     :crit, 2026-11-13, 5d
+    Fertile window            :active, 2026-11-10, 6d
+    section Next period
+    Next period (predicted)   :milestone, 2026-11-29, 0d
+    Uncertainty (±1σ, min ±2) :2026-11-27, 5d
+```
+
+Ovulation centre sits 14 days before the predicted next period; the fertile
+window runs the five days before ovulation through ovulation day; the
+uncertainty window is ±1 standard deviation of the cycle lengths used, floored
+at ±2 days. Dates are illustrative; real values come from the user's history.
+
 In scope: what the product promises to show and how each window is derived.
 Out of scope: the implementation structure, the exact card copy, and any
 all-history statistic beyond the prediction window.

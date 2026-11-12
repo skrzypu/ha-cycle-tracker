@@ -12,3 +12,4 @@ Durable technical decisions for this project.
 | [0006](0006-domain-model-contract.md) | Explicit, framework-free domain model contract | accepted | 2026-11-10 |
 | [0007](0007-opendesign-mcp-explicit-daemon-url.md) | OpenDesign MCP requires an explicit daemon URL | accepted | 2026-11-12 |
 | [0008](0008-home-assistant-mcp-read-only-core-version.md) | Home Assistant MCP Read-only requires Core 2026.10+ | accepted | 2026-11-12 |
+| [0009](0009-documentation-mermaid-portable-markdown.md) | Documentation uses Mermaid diagrams in portable Markdown | accepted | 2026-11-12 |

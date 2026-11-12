@@ -66,6 +66,36 @@ becomes a repair issue, a sensor attribute, or a log line.
 **Migration.** None. The integration has not shipped usable data; the old
 `{start_date, end_date}` dictionaries are discarded.
 
+The model in a class diagram:
+
+```mermaid
+classDiagram
+    class Period {
+        +UUID id
+        +date start
+        +date? end
+        +FlowIntensity? flow
+        +str? notes
+        +datetime? updated_at
+    }
+    class Cycle {
+        +date start
+        +int length_days
+    }
+    class Prediction {
+        +date next_period
+        +tuple uncertainty_window
+        +tuple ovulation_window
+        +tuple fertile_window
+        +float confidence
+        +str confidence_band
+        +bool is_late
+        +tuple warnings
+    }
+    Cycle --> Period : derived from consecutive starts
+    Prediction --> Cycle : derived, never persisted
+```
+
 ## Alternatives considered
 
 | Alternative | Why not |
