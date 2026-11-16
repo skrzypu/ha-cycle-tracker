@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 from unittest.mock import AsyncMock
 
@@ -47,3 +48,20 @@ async def test_unload_shuts_the_coordinator_down(
     shutdown.assert_awaited_once()
     assert coordinator._unsub_refresh is None
     assert entry.entry_id not in hass.data[DOMAIN]
+
+
+async def test_the_coordinator_refreshes_every_six_hours(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    config_entry: MockConfigEntry,
+) -> None:
+    """The running coordinator recalculates on the documented six-hour cycle.
+
+    README states "Entities are recalculated every 6 hours". The interval is
+    spelled out as ``timedelta(hours=6)`` rather than via
+    ``DEFAULT_UPDATE_INTERVAL_HOURS`` so a drift between the documented value
+    and the scheduler fails here. Date-change rebuilds are separate behaviour,
+    covered by ``test_snapshot_rebuilds_when_the_reference_date_changes``.
+    """
+    assert hass.data[DOMAIN][config_entry.entry_id] is coordinator
+    assert coordinator.update_interval == timedelta(hours=6)
