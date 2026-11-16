@@ -1,206 +1,106 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
   "preset": "opencode-go-paid",
-  "disabled_agents": [],
+  "disabled_agents": ["council", "docs-writer", "github-issues", "tester"],
   "presets": {
     "opencode-go-free": {
       "orchestrator": {
         "model": "opencode/deepseek-v4.1-flash-free",
-        "variant": "high",
+        "variant": "medium",
         "skills": [
-          "*",
           "codemap",
-          "find-skills",
+          "concise-planning",
           "subagent-driven-development",
           "dispatching-parallel-agents",
-          "writing-plans",
           "executing-plans",
-          "requesting-code-review",
           "finishing-a-development-branch"
         ],
-        "mcps": [
-          "*",
-          "!context7"
-        ]
+        "mcps": []
       },
       "oracle": {
         "model": "opencode/deepseek-v4.1-flash-free",
         "variant": "max",
-        "skills": [
-          "simplify",
-          "verification-planning",
-          "deepwork",
-          "systematic-debugging"
-        ],
-        "mcps": []
-      },
-      "council": {
-        "model": "opencode/deepseek-v4.1-flash-free",
-        "variant": "max",
-        "skills": [],
+        "skills": ["simplify", "systematic-debugging", "verification-planning", "caveman"],
         "mcps": []
       },
       "librarian": {
         "model": "opencode/glm-5.3-flash-free",
-        "skills": [
-          "find-skills"
-        ],
-        "mcps": [
-          "websearch",
-          "context7",
-          "grep_app"
-        ]
+        "skills": ["find-skills"],
+        "mcps": ["websearch", "context7", "grep_app"]
       },
       "explorer": {
         "model": "opencode/glm-5.3-flash-free",
-        "skills": [],
+        "skills": ["caveman"],
         "mcps": []
       },
       "designer": {
         "model": "opencode/nemotron-3.5-super-vl-free",
         "variant": "medium",
-        "skills": [
-          "agent-browser",
-          "sleek-design-mobile-apps"
-        ],
+        "skills": [],
         "mcps": []
       },
       "fixer": {
         "model": "opencode/deepseek-v4.1-flash-free",
-        "variant": "high",
-        "skills": [
-          "test-driven-development",
-          "verification-before-completion",
-          "simplify"
-        ],
+        "variant": "medium",
+        "skills": ["test-driven-development", "verification-before-completion", "simplify", "caveman", "deslop"],
         "mcps": []
       },
       "observer": {
         "model": "opencode/nemotron-3.5-super-vl-free",
-        "skills": [],
-        "mcps": [],
-        "variant": "medium"
-      },
-      "docs-writer": {
-        "model": "opencode/deepseek-v4.1-flash-free",
+        "variant": "medium",
         "skills": [],
         "mcps": []
-      },
-      "github-issues": {
-        "model": "opencode/deepseek-v4.1-flash-free",
-        "skills": [],
-        "mcps": []
-      },
-      "tester": {
-        "model": "opencode/deepseek-v4.1-flash-free",
-        "skills": [
-          "webapp-testing",
-          "playwright-best-practices",
-          "verification-before-completion"
-        ],
-        "mcps": [],
-        "variant": "high"
       }
     },
     "opencode-go-paid": {
       "orchestrator": {
-        "model": "opencode/deepseek-v4-pro",
-        "variant": "max",
+        "model": ["opencode-go/deepseek-v4-pro", "opencode-go/deepseek-v4.1-flash", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "medium",
         "skills": [
-          "*",
           "codemap",
-          "find-skills",
+          "concise-planning",
           "subagent-driven-development",
           "dispatching-parallel-agents",
-          "writing-plans",
           "executing-plans",
-          "requesting-code-review",
           "finishing-a-development-branch"
-        ],
-        "mcps": [
-          "*",
-          "!context7"
-        ]
-      },
-      "oracle": {
-        "model": "opencode/deepseek-v4-pro",
-        "variant": "max",
-        "skills": [
-          "simplify",
-          "verification-planning",
-          "deepwork",
-          "systematic-debugging"
         ],
         "mcps": []
       },
-      "council": {
-        "model": "opencode/kimi-k3",
-        "variant": "high",
-        "skills": [],
+      "oracle": {
+        "model": ["opencode-go/deepseek-v4-pro", "opencode-go/kimi-k2.7-code", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "max",
+        "skills": ["simplify", "systematic-debugging", "verification-planning", "caveman"],
         "mcps": []
       },
       "librarian": {
-        "model": "opencode/qwen3.8-flash",
-        "skills": [
-          "find-skills"
-        ],
-        "mcps": [
-          "websearch",
-          "context7",
-          "grep_app"
-        ]
+        "model": ["opencode-go/qwen3.8-flash", "opencode/glm-5.3-flash-free"],
+        "skills": ["find-skills"],
+        "mcps": ["websearch", "context7", "grep_app"]
       },
       "explorer": {
-        "model": "opencode/qwen3.8-flash",
-        "skills": [],
+        "model": ["opencode-go/qwen3.8-flash", "opencode/glm-5.3-flash-free"],
+        "skills": ["caveman"],
         "mcps": []
       },
       "designer": {
-        "model": "opencode/gemini-3.1-pro",
+        "model": ["opencode-go/gemini-3.1-pro", "opencode/nemotron-3.5-super-vl-free"],
         "variant": "medium",
-        "skills": [
-          "agent-browser",
-          "sleek-design-mobile-apps"
-        ],
+        "skills": [],
         "mcps": []
       },
       "fixer": {
-        "model": "opencode/kimi-k2.7-code",
-        "skills": [
-          "test-driven-development",
-          "verification-before-completion",
-          "simplify"
-        ],
+        "model": ["opencode-go/kimi-k2.7-code", "opencode-go/deepseek-v4.1-flash", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "medium",
+        "skills": ["test-driven-development", "verification-before-completion", "simplify", "caveman", "deslop"],
         "mcps": []
       },
       "observer": {
         "model": "opencode/nemotron-3.5-super-vl-free",
+        "variant": "medium",
         "skills": [],
-        "mcps": [],
-        "variant": "medium"
-      },
-      "docs-writer": {
-        "model": "opencode/qwen3.8-flash",
-        "skills": [],
-        "mcps": []
-      },
-      "github-issues": {
-        "model": "opencode/qwen3.8-flash",
-        "skills": [],
-        "mcps": []
-      },
-      "tester": {
-        "model": "opencode/deepseek-v4.1-flash",
-        "skills": [
-          "webapp-testing",
-          "playwright-best-practices",
-          "verification-before-completion"
-        ],
         "mcps": []
       }
     }
   },
-  "backgroundJobs": {
-    "maxSessionsPerAgent": 3
-  }
+  "backgroundJobs": { "maxSessionsPerAgent": 3 }
 }

@@ -154,6 +154,19 @@ The GitHub Actions workflow in `.github/workflows/` runs the pre-commit hooks on
 
 ## Development tooling
 
+Test layers and the quality bar for the end-to-end suite are recorded in
+[ADR-0012](docs/adr/0012-e2e-tests-verify-shipped-contract.md): E2E tests drive
+the public integration surface with literal expectations from the documented
+algorithm, and every new or changed E2E test must be shown to fail against a
+targeted mutation of the code it covers.
+
+The project uses pinned agent skills from [skills.sh](https://www.skills.sh/),
+locked in `skills-lock.json`. Which skills are installed, why, where they are
+applied and whether they still earn their place is listed in
+[docs/skills/README.md](docs/skills/README.md) — that index, not the individual
+`SKILL.md` files, is the review surface
+([ADR-0013](docs/adr/0013-agent-skills-pinned-indexed-reviewed.md)).
+
 Two opt-in MCP servers are configured in `opencode.json` for debugging against a
 live Home Assistant instance and previewing the Lovelace card in OpenDesign. Both
 entries are `disabled: true` by default and are turned on only for a specific

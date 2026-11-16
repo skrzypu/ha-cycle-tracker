@@ -15,3 +15,6 @@ Durable technical decisions for this project.
 | [0009](0009-documentation-mermaid-portable-markdown.md) | Documentation uses Mermaid diagrams in portable Markdown | accepted | 2026-11-12 |
 | [0010](0010-service-call-config-entry-resolution.md) | Service calls resolve their config entry from the call target | accepted | 2026-11-15 |
 | [0011](0011-config-entry-owns-settings.md) | The config entry owns settings; integration storage owns periods | accepted | 2026-11-15 |
+| [0012](0012-e2e-tests-verify-shipped-contract.md) | E2E tests verify the shipped contract, and their strength is proven by mutation | accepted | 2026-11-16 |
+| [0013](0013-agent-skills-pinned-indexed-reviewed.md) | Agent skills are pinned, indexed and reviewed | accepted | 2026-11-16 |
+| [0014](0014-agent-auditor-verifies-config-truth.md) | An agent auditor periodically verifies that agent and config documentation is still true | accepted | 2026-11-16 |
