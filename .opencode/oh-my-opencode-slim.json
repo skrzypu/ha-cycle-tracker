@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
-  "preset": "opencode-go-free",
+  "preset": "opencode-go-paid",
   "disabled_agents": [],
   "presets": {
     "opencode-go-free": {

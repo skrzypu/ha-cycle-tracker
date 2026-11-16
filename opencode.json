@@ -1,6 +1,5 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "opencode/deepseek-v4.1-flash-free",
   "default_agent": "orchestrator",
   "permissions": [
     { "action": "default", "resource": "*", "effect": "ask" },
@@ -45,7 +44,6 @@
   "agents": {
     "orchestrator": {
       "mode": "primary",
-      "model": "opencode/deepseek-v4.1-flash-free#high",
       "description": "Main orchestrator for ha-cycle-tracker"
     }
   },
