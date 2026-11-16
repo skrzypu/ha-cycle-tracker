@@ -1,28 +1,39 @@
 """Config flow for Cycle Tracker."""
 
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, TypeVar
+
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigEntry, ConfigFlowResult
+from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
-    DOMAIN,
     CONF_CYCLE_LENGTH,
-    CONF_PERIOD_LENGTH,
-    CONF_LAST_PERIOD_START,
-    CONF_PREDICTION_ALGORITHM,
-    CONF_NOTIFICATION_OFFSET_DAYS,
     CONF_ENABLE_NOTIFICATIONS,
+    CONF_LAST_PERIOD_START,
+    CONF_NOTIFICATION_OFFSET_DAYS,
     CONF_NOTIFICATION_TIME,
+    CONF_PERIOD_LENGTH,
+    CONF_PREDICTION_ALGORITHM,
     DEFAULT_CYCLE_LENGTH,
+    DEFAULT_ENABLE_NOTIFICATIONS,
+    DEFAULT_NOTIFICATION_OFFSET_DAYS,
+    DEFAULT_NOTIFICATION_TIME,
     DEFAULT_PERIOD_LENGTH,
     DEFAULT_PREDICTION_ALGORITHM,
-    DEFAULT_NOTIFICATION_OFFSET_DAYS,
-    DEFAULT_ENABLE_NOTIFICATIONS,
-    DEFAULT_NOTIFICATION_TIME,
+    DOMAIN,
     PREDICTION_ALGORITHMS,
 )
+
+_T = TypeVar("_T")
+
+
+def _setting(entry: ConfigEntry, key: str, default: _T) -> _T:
+    """Resolve one setting: entry options, then setup data, then the default."""
+    return entry.options.get(key, entry.data.get(key, default))
 
 
 class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type: ignore[call-arg]
@@ -36,7 +47,7 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the initial step - basic configuration."""
         if user_input is not None:
             self._data.update(user_input)
@@ -81,7 +92,7 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
 
     async def async_step_preferences(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the preferences step."""
         if user_input is not None:
             self._data.update(user_input)
@@ -121,7 +132,7 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
 
     async def async_step_notifications(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle the notifications step."""
         if user_input is not None:
             self._data.update(user_input)
@@ -147,33 +158,35 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
         )
 
     @staticmethod
-    def async_get_options_flow(config_entry):
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> CycleTrackerOptionsFlow:
         """Get the options flow."""
-        return CycleTrackerOptionsFlow(config_entry)
+        return CycleTrackerOptionsFlow()
 
 
 class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Cycle Tracker."""
+    """Handle options flow for Cycle Tracker.
 
-    def __init__(self, config_entry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
+    Home Assistant creates the flow through ``OptionsFlowManager``, which sets
+    the handler and the hass instance the ``config_entry`` property reads from.
+    """
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Manage the options."""
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
+        entry = self.config_entry
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
                     vol.Required(
                         CONF_CYCLE_LENGTH,
-                        default=self.config_entry.data.get(
-                            CONF_CYCLE_LENGTH, DEFAULT_CYCLE_LENGTH
+                        default=_setting(
+                            entry, CONF_CYCLE_LENGTH, DEFAULT_CYCLE_LENGTH
                         ),
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
@@ -185,8 +198,8 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Required(
                         CONF_PERIOD_LENGTH,
-                        default=self.config_entry.data.get(
-                            CONF_PERIOD_LENGTH, DEFAULT_PERIOD_LENGTH
+                        default=_setting(
+                            entry, CONF_PERIOD_LENGTH, DEFAULT_PERIOD_LENGTH
                         ),
                     ): selector.NumberSelector(
                         selector.NumberSelectorConfig(
@@ -198,8 +211,10 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Required(
                         CONF_PREDICTION_ALGORITHM,
-                        default=self.config_entry.data.get(
-                            CONF_PREDICTION_ALGORITHM, DEFAULT_PREDICTION_ALGORITHM
+                        default=_setting(
+                            entry,
+                            CONF_PREDICTION_ALGORITHM,
+                            DEFAULT_PREDICTION_ALGORITHM,
                         ),
                     ): selector.SelectSelector(
                         selector.SelectSelectorConfig(
@@ -210,7 +225,8 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Required(
                         CONF_NOTIFICATION_OFFSET_DAYS,
-                        default=self.config_entry.data.get(
+                        default=_setting(
+                            entry,
                             CONF_NOTIFICATION_OFFSET_DAYS,
                             DEFAULT_NOTIFICATION_OFFSET_DAYS,
                         ),
@@ -224,14 +240,18 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                     ),
                     vol.Required(
                         CONF_ENABLE_NOTIFICATIONS,
-                        default=self.config_entry.data.get(
-                            CONF_ENABLE_NOTIFICATIONS, DEFAULT_ENABLE_NOTIFICATIONS
+                        default=_setting(
+                            entry,
+                            CONF_ENABLE_NOTIFICATIONS,
+                            DEFAULT_ENABLE_NOTIFICATIONS,
                         ),
                     ): selector.BooleanSelector(),
                     vol.Required(
                         CONF_NOTIFICATION_TIME,
-                        default=self.config_entry.data.get(
-                            CONF_NOTIFICATION_TIME, DEFAULT_NOTIFICATION_TIME
+                        default=_setting(
+                            entry,
+                            CONF_NOTIFICATION_TIME,
+                            DEFAULT_NOTIFICATION_TIME,
                         ),
                     ): selector.TimeSelector(),
                 }
