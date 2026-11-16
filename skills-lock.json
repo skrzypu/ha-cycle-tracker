@@ -1,25 +1,12 @@
 {
   "version": 2,
   "skills": {
-    "agent-browser": {
-      "source": "vercel-labs/agent-browser",
-      "sourceType": "github",
-      "skillPath": "skills/agent-browser/SKILL.md",
-      "computedHash": ""
-    },
     "caveman": {
       "source": "JuliusBrussee/caveman",
       "commit": "9b243662ff98d392bc0a95b865a554583d71be75",
       "sourceType": "github",
       "skillPath": "skills/caveman/SKILL.md",
       "computedHash": "b51af74aacdadbc3c2d6bb79f05db58dc521854b87f7ffabd48faf286a81ed31"
-    },
-    "caveman-compress": {
-      "source": "JuliusBrussee/caveman",
-      "commit": "9b243662ff98d392bc0a95b865a554583d71be75",
-      "sourceType": "github",
-      "skillPath": "skills/caveman-compress/SKILL.md",
-      "computedHash": "1f627a3ac239baa859918cf64a5e89619c162e1e9787c6d97ad41c5a1cc2fdb9"
     },
     "caveman-review": {
       "source": "JuliusBrussee/caveman",
@@ -73,23 +60,11 @@
       "skillPath": ".agents/skills/ha-integration-knowledge/SKILL.md",
       "computedHash": "e3e9a570bb763c8691845954c197cb61e0ae8a25548eabc81f405765a0211a61"
     },
-    "playwright-best-practices": {
-      "source": "currents-dev/playwright-best-practices-skill",
-      "sourceType": "github",
-      "skillPath": "playwright-best-practices/SKILL.md",
-      "computedHash": ""
-    },
     "requesting-code-review": {
       "source": "obra/superpowers",
       "sourceType": "github",
       "skillPath": "skills/requesting-code-review/SKILL.md",
       "computedHash": "f6a532d71e6854d65aa61cfb093b6702177c67b68ca0045fe383680f5ea71989"
-    },
-    "sleek-design-mobile-apps": {
-      "source": "sleekdotdesign/agent-skills",
-      "sourceType": "github",
-      "skillPath": "skills/design-mobile-apps/SKILL.md",
-      "computedHash": "207b0ddfb094cdbe5a0850615acc7955f3c9552dc4a95a17e26c422e2323777b"
     },
     "subagent-driven-development": {
       "source": "obra/superpowers",
@@ -121,12 +96,6 @@
       "sourceType": "github",
       "skillPath": "skills/verification-before-completion/SKILL.md",
       "computedHash": "09b0e3a4689c1c38a3b8fc6ef57a1d4165aa33c0013d546dbde9dd348941a319"
-    },
-    "webapp-testing": {
-      "source": "anthropics/skills",
-      "sourceType": "github",
-      "skillPath": "skills/webapp-testing/SKILL.md",
-      "computedHash": ""
     },
     "writing-plans": {
       "source": "obra/superpowers",

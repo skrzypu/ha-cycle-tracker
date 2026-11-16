@@ -12,8 +12,8 @@ repository, file path and content hash. The installed copies live in
 ## Installed skills
 
 Status: `in use` — the skill has demonstrably changed work in this repository;
-`trial` — installed and applicable, not yet exercised; `retire proposed` — kept
-only until someone confirms nothing here needs it.
+`trial` — installed and applicable, not yet exercised. Removed skills are
+listed under "Removed" with the reason.
 
 ### Test and verification
 
@@ -45,23 +45,19 @@ only until someone confirms nothing here needs it.
 | Skill | Source | Why it is here | Applied where | Status |
 | --- | --- | --- | --- | --- |
 | [caveman](https://skills.sh/juliusbrussee/caveman/caveman) | `juliusbrussee/caveman` | Terse output — answers first, fluff gone, technical facts kept | `fixer`, `oracle`, `explorer` replies | trial |
-| [caveman-compress](https://skills.sh/juliusbrussee/caveman/caveman-compress) | `juliusbrussee/caveman` | Compresses memory/todo files (e.g. `CLAUDE.md`) to cut input tokens | Agent prompt/memory maintenance | trial |
 
-### Proposed for retirement
+### Removed 2026-11-16
 
-Installed before the project settled on a pure-Python integration with no web
-UI. The Lovelace card is parked (`docs/ideas`), so browser skills have nothing
-to act on yet and can be re-added when the card lands.
+| Skill | Source | Why it left |
+| --- | --- | --- |
+| agent-browser | `vercel-labs/agent-browser` | No browser surface; Lovelace card parked |
+| playwright-best-practices | `currents-dev/playwright-best-practices-skill` | Tests are pytest, not Playwright |
+| webapp-testing | `anthropics/skills` | Same |
+| sleek-design-mobile-apps | `sleekdotdesign/agent-skills` | Mobile app design, not a HA integration |
+| caveman-compress | `juliusbrussee/caveman` | Ships executable `scripts/`; declined on risk for now |
 
-| Skill | Source | Why it is not earning its place | Status |
-| --- | --- | --- | --- |
-| [agent-browser](https://skills.sh/vercel-labs/agent-browser/agent-browser) | `vercel-labs/agent-browser` | Browser automation for a project with no browser surface | retire proposed |
-| [playwright-best-practices](https://skills.sh/currents-dev/playwright-best-practices-skill/playwright-best-practices) | `currents-dev/playwright-best-practices-skill` | Same; the tests here are pytest, not Playwright | retire proposed |
-| [webapp-testing](https://skills.sh/anthropics/skills/webapp-testing) | `anthropics/skills` | Same | retire proposed |
-| [sleek-design-mobile-apps](https://skills.sh/sleekdotdesign/agent-skills/design-mobile-apps) | `sleekdotdesign/agent-skills` | Mobile app design; this is a Home Assistant integration | retire proposed |
-
-Removing one: `npx skills remove <skill>`, then delete its row here and its
-entry in `skills-lock.json`.
+Re-adding any of these is `npx skills add <source>@<skill>` plus a row back in
+the tables above.
 
 ## Considered and rejected
 
