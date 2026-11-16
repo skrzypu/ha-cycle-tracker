@@ -13,3 +13,5 @@ Durable technical decisions for this project.
 | [0007](0007-opendesign-mcp-explicit-daemon-url.md) | OpenDesign MCP requires an explicit daemon URL | accepted | 2026-11-12 |
 | [0008](0008-home-assistant-mcp-read-only-core-version.md) | Home Assistant MCP Read-only requires Core 2026.10+ | accepted | 2026-11-12 |
 | [0009](0009-documentation-mermaid-portable-markdown.md) | Documentation uses Mermaid diagrams in portable Markdown | accepted | 2026-11-12 |
+| [0010](0010-service-call-config-entry-resolution.md) | Service calls resolve their config entry from the call target | accepted | 2026-11-15 |
+| [0011](0011-config-entry-owns-settings.md) | The config entry owns settings; integration storage owns periods | accepted | 2026-11-15 |
