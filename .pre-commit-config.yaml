@@ -15,9 +15,22 @@ repos:
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.11.2
+  - repo: local
     hooks:
       - id: mypy
-        additional_dependencies: [types-requests, pyyaml]
-        args: [--ignore-missing-imports, --disable-error-code=call-arg, --disable-error-code=var-annotated, --explicit-package-bases]
+        name: mypy
+        description: Type-check the integration against the real Home Assistant types.
+        entry: mypy
+        language: system
+        files: ^custom_components/.*\.py$
+        pass_filenames: false
+        require_serial: true
+        args: [custom_components/, --ignore-missing-imports, --explicit-package-bases]
+      - id: pytest
+        name: pytest
+        description: Run the test suite from the development environment.
+        entry: pytest -q
+        language: system
+        files: ^(custom_components|tests)/.*\.py$
+        pass_filenames: false
+        require_serial: true
