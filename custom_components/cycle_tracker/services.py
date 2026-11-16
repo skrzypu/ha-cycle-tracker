@@ -1,21 +1,42 @@
-"""Services for Cycle Tracker."""
+"""Services for Cycle Tracker.
 
+The services are domain-level, not per config entry, so a call has to say which
+entry it means. That is resolved from the call's target — an entity, device or
+area of this integration — through the entity registry, falling back to the only
+configured entry when the call carries no target. Because
+``ServiceRegistry.async_call`` merges the target into the service data before
+validating, both schemas also accept the target keys.
+"""
+
+from typing import Any
+
+import voluptuous as vol
+from homeassistant.const import ATTR_AREA_ID, ATTR_DEVICE_ID, ATTR_ENTITY_ID
 from homeassistant.core import (
     HomeAssistant,
     ServiceCall,
     ServiceResponse,
     SupportsResponse,
 )
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import config_validation as cv
-import voluptuous as vol
+from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.service import async_extract_entity_ids
 
 from .const import (
     DOMAIN,
-    SERVICE_LOG_START,
     SERVICE_LOG_END,
+    SERVICE_LOG_START,
 )
 from .coordinator import CycleTrackerCoordinator
 
+#: Target keys the service registry injects into the call data. The handlers
+#: read the selection through ``async_extract_entity_ids``, not from these keys.
+_TARGET_FIELDS: dict[Any, Any] = {
+    vol.Optional(ATTR_ENTITY_ID): cv.entity_ids,
+    vol.Optional(ATTR_DEVICE_ID): vol.All(cv.ensure_list, [str]),
+    vol.Optional(ATTR_AREA_ID): vol.All(cv.ensure_list, [str]),
+}
 
 SERVICE_LOG_START_SCHEMA = vol.Schema(
     {
@@ -23,14 +44,52 @@ SERVICE_LOG_START_SCHEMA = vol.Schema(
         vol.Optional("flow_intensity", default="medium"): vol.In(
             ["spotting", "light", "medium", "heavy"]
         ),
+        **_TARGET_FIELDS,
     }
 )
 
 SERVICE_LOG_END_SCHEMA = vol.Schema(
     {
         vol.Required("date"): cv.date,
+        **_TARGET_FIELDS,
     }
 )
+
+
+async def _async_resolve_coordinator(
+    hass: HomeAssistant, call: ServiceCall
+) -> CycleTrackerCoordinator:
+    """Resolve the coordinator a call applies to, or reject the call."""
+    coordinators: dict[str, CycleTrackerCoordinator] = hass.data.get(DOMAIN, {})
+    entity_ids = await async_extract_entity_ids(call)
+
+    if not entity_ids:
+        if len(coordinators) == 1:
+            return next(iter(coordinators.values()))
+        raise ServiceValidationError(
+            "Cycle Tracker cannot tell which data to update. Target an entity of "
+            f"the {DOMAIN} integration, or set up exactly one Cycle Tracker entry."
+        )
+
+    registry = er.async_get(hass)
+    entry_ids: set[str] = set()
+    for entity_id in entity_ids:
+        entity_entry = registry.async_get(entity_id)
+        if entity_entry is None or entity_entry.config_entry_id is None:
+            continue
+        if entity_entry.config_entry_id in coordinators:
+            entry_ids.add(entity_entry.config_entry_id)
+
+    if not entry_ids:
+        raise ServiceValidationError(
+            "None of the targeted entities belong to Cycle Tracker."
+        )
+    if len(entry_ids) > 1:
+        raise ServiceValidationError(
+            "The target spans several Cycle Tracker entries. Target an entity of a "
+            "single entry, or call the service once per entry."
+        )
+    return coordinators[entry_ids.pop()]
 
 
 async def async_setup_services(hass: HomeAssistant) -> None:
@@ -38,9 +97,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_log_start(call: ServiceCall) -> ServiceResponse:
         """Handle log_start service call."""
-        coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][
-            call.config_entry.entry_id
-        ]
+        coordinator = await _async_resolve_coordinator(hass, call)
         date_str = call.data["date"].isoformat()
         flow_intensity = call.data["flow_intensity"]
 
@@ -50,7 +107,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
             periods[-1]["end_date"] = date_str
             periods[-1]["flow_intensity"] = flow_intensity
         else:
-            # Add new period
+            # Add new period, open until log_end closes it
             coordinator.add_period(
                 {
                     "start_date": date_str,
@@ -66,19 +123,28 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
     async def handle_log_end(call: ServiceCall) -> ServiceResponse:
         """Handle log_end service call."""
-        coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][
-            call.config_entry.entry_id
-        ]
+        coordinator = await _async_resolve_coordinator(hass, call)
         date_str = call.data["date"].isoformat()
 
         periods = coordinator.get_periods()
         if not periods:
             return {"success": False, "message": "No period started to end"}
 
-        # Find the period that matches or is the latest
         last_period = periods[-1]
-        if last_period["end_date"] != last_period["start_date"]:
+        start_date = last_period.get("start_date")
+        # A row without a start date cannot be ended; refuse it like a closed one
+        # instead of failing the service call with a KeyError.
+        if not isinstance(start_date, str) or last_period.get("end_date") != start_date:
             return {"success": False, "message": "Period already ended"}
+
+        # Stored dates are ISO format, so the comparison needs no parsing.
+        if date_str < start_date:
+            return {
+                "success": False,
+                "message": (
+                    f"End date {date_str} precedes the period start {start_date}"
+                ),
+            }
 
         last_period["end_date"] = date_str
         await coordinator.async_save_data()

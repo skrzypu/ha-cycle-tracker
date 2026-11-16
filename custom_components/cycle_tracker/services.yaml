@@ -1,6 +1,9 @@
 log_start:
   name: "Log Period Start"
   description: "Log the start of a menstrual period"
+  target:
+    entity:
+      integration: cycle_tracker
   fields:
     date:
       name: "Date"
@@ -25,6 +28,9 @@ log_start:
 log_end:
   name: "Log Period End"
   description: "Log the end of a menstrual period"
+  target:
+    entity:
+      integration: cycle_tracker
   fields:
     date:
       name: "Date"
