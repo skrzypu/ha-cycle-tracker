@@ -55,6 +55,50 @@ The rules that make up that promise:
 - **Wording:** must not read as a contraceptive guarantee. The exact copy is
   deferred to the card work.
 
+Refined on 2026-11-13 in the review of `openspec/changes/add-cycle-prediction/`,
+amended in place rather than superseded because the commitment is unchanged. The
+following rules take precedence where the wording above is less specific.
+
+- **Filter before window.** Out-of-range cycles and the cycle at a gap boundary
+  are removed first, then the six most recent usable cycles are taken. An
+  excluded cycle does not occupy a window slot.
+- **Gap truncates the window.** The window stops at the most recent gap longer
+  than 90 days: only cycles recorded after it feed prediction, at most six.
+  Earlier cycles stay in history and statistics but do not influence the
+  prediction — a long break describes a different physiological state, so
+  averaging across it would fake precision.
+- **Population σ, ±2 floor.** Sigma is the population standard deviation of the
+  usable lengths, treated as the whole set. Half-width is
+  `max(2, ceil(sigma))`, so the ±2-day floor holds even at σ = 0; this replaces
+  the earlier "collapses to the predicted date" wording.
+- **Rounding and bounds.** Strategy results are rounded half-up, not with
+  Python's banker's rounding. Window bounds are expanded (`ceil`/`floor`) so a
+  window is never narrower than the data.
+- **Phases from the ovulation centre.** Phase boundaries derive from a centre 14
+  days before the next period start: the actual next start for a completed
+  cycle, the predicted date for the current cycle.
+- **Period length wins.** When the configured period length reaches into the
+  ovulation window, those days are menstrual, the ovulatory phase starts after
+  the last menstrual day, and no follicular phase is reported if no day remains.
+  If nothing remains of the ovulatory window, there is no ovulatory phase.
+- **Frozen prediction.** A late period does not move the predicted date. Future
+  calendar events are projected from that frozen prediction by stepping forward
+  by the predicted cycle length.
+- **Two usable cycles.** Below two, prediction entities report `unknown`, phase
+  is unknown, and only the elapsed cycle day remains. After a long gap the user
+  needs two new cycles before prediction returns; the message says that rather
+  than implying data was lost.
+- **Confidence describes the data.** It comes from the usable data set, not the
+  chosen strategy: switching algorithm changes the date but not the confidence.
+- **Days until and cycle day.** `days_until_period` reads 0 when the period is
+  due or late; the late flag and late-day count carry the distinction. Cycle day
+  is an elapsed count and does not wrap at the configured length.
+
+Two consequences deserve prose. On a 28-day cycle the ovulation centre falls on
+**cycle day 15** (day 1 is the start), not day 14 — the 14 counts backwards from
+the next period. And the calendar is a projection of the frozen prediction, not
+a second prediction.
+
 The windows sit on the cycle as follows (illustrative 28-day cycle):
 
 ```mermaid
@@ -115,6 +159,11 @@ all-history statistic beyond the prediction window.
   length below 2 cycles; `prediction_confidence` is the constant `0.5`.
 - `docs/adr/0005-solid-and-clean-architecture.md` — prediction strategies and
   the `Clock` port constrain how these rules are implemented.
+- `openspec/changes/add-cycle-prediction/` — the change that implements these
+  rules; its design and `cycle-prediction` spec record the filter order, phase
+  derivation, frozen date, and projection split.
+- `docs/guide/algorithms.md` — the user-facing derivation the sensors must
+  match.
 
 Assumption: the 15–90 day outlier bounds and the 90-day gap threshold are
 acceptable defaults for the target users. No usage data or user counts are
@@ -127,5 +176,12 @@ available to validate them.
 - [ ] Define the card copy for the range, the fertile window, and the late
       state, ensuring it does not read as a contraceptive guarantee.
 - [ ] Add the advanced outlier-bound override to the options flow.
+- [ ] Derive phases from the ovulation centre, using the actual next start for a
+      completed cycle, and document that a 28-day cycle puts the centre on
+      cycle day 15.
+- [ ] Split projection from prediction: project calendar events from the frozen
+      prediction by stepping forward by the predicted cycle length.
+- [x] Align `docs/guide/algorithms.md` with the zero-deviation case: the window
+      stays at ±2 days rather than collapsing.
 - [ ] Revisit this record if user feedback shows the windows are too wide to
       automate against or too narrow to be honest.

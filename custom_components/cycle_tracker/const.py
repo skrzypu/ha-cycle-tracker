@@ -28,7 +28,13 @@ DEFAULT_NOTIFICATION_TIME = "08:00"
 PREDICTION_ALGORITHMS = [
     "arithmetic_mean",
     "weighted_moving_average",
+    "median",
 ]
+
+# Data warning kinds
+WARNING_OUTLIER = "outlier"
+WARNING_GAP = "gap"
+WARNING_MISSING_FLOW = "missing_flow"
 
 # Attributes
 ATTR_CYCLE_DAY = "cycle_day"
@@ -40,11 +46,25 @@ ATTR_PERIOD_LENGTH = "period_length"
 ATTR_DAYS_UNTIL_PERIOD = "days_until_period"
 ATTR_DAYS_UNTIL_OVULATION = "days_until_ovulation"
 ATTR_PREDICTION_CONFIDENCE = "prediction_confidence"
+ATTR_CONFIDENCE_BAND = "confidence_band"
 ATTR_AVERAGE_CYCLE_LENGTH = "average_cycle_length"
 ATTR_AVERAGE_PERIOD_LENGTH = "average_period_length"
 ATTR_STD_DEV_CYCLE = "std_dev_cycle"
 ATTR_STD_DEV_PERIOD = "std_dev_period"
+ATTR_SHORTEST_CYCLE = "shortest_cycle"
+ATTR_LONGEST_CYCLE = "longest_cycle"
 ATTR_TOTAL_CYCLES_TRACKED = "total_cycles_tracked"
+ATTR_USABLE_CYCLE_COUNT = "usable_cycle_count"
+ATTR_PREDICTED_CYCLE_LENGTH = "predicted_cycle_length"
+ATTR_UNCERTAINTY_START = "uncertainty_start"
+ATTR_UNCERTAINTY_END = "uncertainty_end"
+ATTR_OVULATION_WINDOW_START = "ovulation_window_start"
+ATTR_OVULATION_WINDOW_END = "ovulation_window_end"
+ATTR_FERTILE_WINDOW_START = "fertile_window_start"
+ATTR_FERTILE_WINDOW_END = "fertile_window_end"
+ATTR_IS_LATE = "is_late"
+ATTR_DAYS_LATE = "days_late"
+ATTR_WARNINGS = "warnings"
 
 # Cycle phases
 CYCLE_PHASE_MENSTRUAL = "menstrual"

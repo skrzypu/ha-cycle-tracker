@@ -46,7 +46,8 @@
     "prediction_algorithm": {
       "options": {
         "arithmetic_mean": "Arithmetic mean",
-        "weighted_moving_average": "Weighted moving average"
+        "weighted_moving_average": "Weighted moving average",
+        "median": "Median"
       }
     },
     "flow_intensity": {

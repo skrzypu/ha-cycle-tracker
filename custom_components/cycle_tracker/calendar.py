@@ -1,14 +1,29 @@
 """Calendar entity for Cycle Tracker."""
 
 from datetime import date, datetime, timedelta
+
 from homeassistant.components.calendar import CalendarEntity, CalendarEvent
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import CycleTrackerCoordinator
+from .domain.events import EventKind
+
+_SUMMARIES = {
+    EventKind.PERIOD: "Predicted Period",
+    EventKind.OVULATION: "Ovulation",
+    EventKind.FERTILE: "Fertile Window",
+}
+
+_DESCRIPTIONS = {
+    EventKind.PERIOD: "Estimated from your recorded cycle history",
+    EventKind.OVULATION: "Estimated ovulation window — not a contraceptive guarantee",
+    EventKind.FERTILE: "Estimated fertile window — not a contraceptive guarantee",
+}
 
 
 async def async_setup_entry(
@@ -47,9 +62,9 @@ class MenstrualCycleCalendar(
         events = self._get_events()
         if not events:
             return None
-        now = datetime.now()
+        today = dt_util.now().date()
         for evt in events:
-            if evt.end >= now:
+            if evt.end >= today:
                 return evt
         return events[-1] if events else None
 
@@ -63,15 +78,22 @@ class MenstrualCycleCalendar(
         return self._get_events_in_range(start_date, end_date)
 
     def _get_events(self) -> list[CalendarEvent]:
-        """Get all cycle events."""
-        events = []
-        periods = self.coordinator.get_periods()
-        if not periods:
-            return events
+        """Get recorded and projected cycle events."""
+        events = self._get_recorded_events()
+        events.extend(self._get_projected_events())
+        events.sort(key=lambda event: event.start)
+        return events
 
-        for period in periods:
-            start = datetime.fromisoformat(period["start_date"])
-            end = datetime.fromisoformat(period["end_date"]) + timedelta(days=1)
+    def _get_recorded_events(self) -> list[CalendarEvent]:
+        """Map recorded periods, keeping the stored row shape unchanged."""
+        events: list[CalendarEvent] = []
+        for period in self.coordinator.get_periods():
+            try:
+                start = date.fromisoformat(period["start_date"])
+                raw_end = period.get("end_date") or period["start_date"]
+                end = date.fromisoformat(raw_end) + timedelta(days=1)
+            except (KeyError, TypeError, ValueError):
+                continue
             events.append(
                 CalendarEvent(
                     summary="Period",
@@ -80,33 +102,30 @@ class MenstrualCycleCalendar(
                     description=f"Flow: {period.get('flow_intensity', 'medium')}",
                 )
             )
+        return events
 
-        # Add predicted periods
-        last_start = self.coordinator.get_last_period_start()
-        if last_start:
-            cycle_length = self.coordinator.get_cycle_length()
-            last = date.fromisoformat(last_start)
-            for i in range(1, 13):  # Next 12 cycles
-                pred_start = last + timedelta(days=cycle_length * i)
-                pred_end = pred_start + timedelta(
-                    days=self.coordinator.get_period_length()
+    def _get_projected_events(self) -> list[CalendarEvent]:
+        """Map the domain projection of the prediction to calendar events."""
+        events: list[CalendarEvent] = []
+        for event in self.coordinator.snapshot.events:
+            summary = _SUMMARIES.get(event.kind)
+            if summary is None:
+                continue
+            events.append(
+                CalendarEvent(
+                    summary=summary,
+                    start=event.start,
+                    end=event.end + timedelta(days=1),
+                    description=_DESCRIPTIONS[event.kind],
                 )
-                events.append(
-                    CalendarEvent(
-                        summary="Predicted Period",
-                        start=datetime.combine(pred_start, datetime.min.time()),
-                        end=datetime.combine(pred_end, datetime.min.time()),
-                        description="Predicted based on average cycle length",
-                    )
-                )
-
+            )
         return events
 
     def _get_events_in_range(
         self, start_date: datetime, end_date: datetime
     ) -> list[CalendarEvent]:
         """Get events within a specific range."""
+        start = start_date.date() if isinstance(start_date, datetime) else start_date
+        end = end_date.date() if isinstance(end_date, datetime) else end_date
         all_events = self._get_events()
-        return [
-            evt for evt in all_events if evt.start < end_date and evt.end > start_date
-        ]
+        return [evt for evt in all_events if evt.start < end and evt.end > start]

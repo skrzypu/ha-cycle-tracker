@@ -2,28 +2,45 @@
 
 from datetime import date
 from typing import Any
-from homeassistant.components.sensor import SensorEntity, SensorDeviceClass
+
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    DOMAIN,
-    ATTR_CYCLE_DAY,
-    ATTR_CYCLE_PHASE,
-    ATTR_NEXT_PERIOD_DATE,
-    ATTR_NEXT_OVULATION_DATE,
-    ATTR_DAYS_UNTIL_PERIOD,
-    ATTR_DAYS_UNTIL_OVULATION,
-    ATTR_PREDICTION_CONFIDENCE,
     ATTR_AVERAGE_CYCLE_LENGTH,
     ATTR_AVERAGE_PERIOD_LENGTH,
+    ATTR_CONFIDENCE_BAND,
+    ATTR_CYCLE_DAY,
+    ATTR_CYCLE_PHASE,
+    ATTR_DAYS_LATE,
+    ATTR_DAYS_UNTIL_OVULATION,
+    ATTR_DAYS_UNTIL_PERIOD,
+    ATTR_FERTILE_WINDOW_END,
+    ATTR_FERTILE_WINDOW_START,
+    ATTR_IS_LATE,
+    ATTR_LONGEST_CYCLE,
+    ATTR_NEXT_OVULATION_DATE,
+    ATTR_NEXT_PERIOD_DATE,
+    ATTR_OVULATION_WINDOW_END,
+    ATTR_OVULATION_WINDOW_START,
+    ATTR_PREDICTED_CYCLE_LENGTH,
+    ATTR_PREDICTION_CONFIDENCE,
+    ATTR_SHORTEST_CYCLE,
     ATTR_STD_DEV_CYCLE,
     ATTR_STD_DEV_PERIOD,
     ATTR_TOTAL_CYCLES_TRACKED,
+    ATTR_UNCERTAINTY_END,
+    ATTR_UNCERTAINTY_START,
+    ATTR_USABLE_CYCLE_COUNT,
+    ATTR_WARNINGS,
+    DOMAIN,
 )
 from .coordinator import CycleTrackerCoordinator
+from .domain.models import Prediction
+from .domain.prediction import Snapshot
 
 
 async def async_setup_entry(
@@ -69,9 +86,19 @@ class CycleTrackerSensor(CoordinatorEntity[CycleTrackerCoordinator], SensorEntit
             "model": "Menstrual Cycle Tracker",
         }
 
+    @property
+    def _snapshot(self) -> Snapshot:
+        """Return the coordinator's prediction snapshot."""
+        return self.coordinator.snapshot
+
+    @property
+    def _prediction(self) -> Prediction | None:
+        """Return the prediction, or None when history is insufficient."""
+        return self.coordinator.snapshot.prediction
+
 
 class CycleDaySensor(CycleTrackerSensor):
-    """Sensor for current cycle day."""
+    """Sensor for the elapsed day of the current cycle."""
 
     def __init__(
         self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
@@ -82,11 +109,8 @@ class CycleDaySensor(CycleTrackerSensor):
 
     @property
     def native_value(self) -> int | None:
-        """Return the current cycle day."""
-        if not self.coordinator.get_last_period_start():
-            return None
-        today = date.today().isoformat()
-        return self.coordinator.calculate_cycle_day(today)
+        """Return the elapsed cycle day, unbounded by the configured length."""
+        return self._snapshot.cycle_day
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -107,11 +131,9 @@ class CyclePhaseSensor(CycleTrackerSensor):
 
     @property
     def native_value(self) -> str | None:
-        """Return the current cycle phase."""
-        if not self.coordinator.get_last_period_start():
-            return None
-        today = date.today().isoformat()
-        return self.coordinator.calculate_phase(today)
+        """Return the phase derived from the ovulation center."""
+        phase = self._snapshot.phase
+        return phase.value if phase is not None else None
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -132,23 +154,33 @@ class NextPeriodDateSensor(CycleTrackerSensor):
         self._attr_icon = "mdi:calendar-star"
 
     @property
-    def native_value(self) -> str | None:
-        """Return the next predicted period date."""
-        if not self.coordinator.get_last_period_start():
+    def native_value(self) -> date | None:
+        """Return the predicted next period date."""
+        prediction = self._prediction
+        if prediction is None:
             return None
-        today = date.today().isoformat()
-        return self.coordinator.predict_next_period(today)
+        return prediction.next_period
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional attributes."""
-        return {
-            ATTR_NEXT_PERIOD_DATE: self.native_value,
+        """Return the uncertainty window and prediction reliability."""
+        prediction = self._prediction
+        attributes: dict[str, Any] = {
+            ATTR_NEXT_PERIOD_DATE: (
+                prediction.next_period.isoformat() if prediction is not None else None
+            )
         }
+        if prediction is not None:
+            uncertainty_start, uncertainty_end = prediction.uncertainty
+            attributes[ATTR_UNCERTAINTY_START] = uncertainty_start.isoformat()
+            attributes[ATTR_UNCERTAINTY_END] = uncertainty_end.isoformat()
+            attributes[ATTR_PREDICTED_CYCLE_LENGTH] = prediction.cycle_length_days
+            attributes[ATTR_USABLE_CYCLE_COUNT] = prediction.usable_cycle_count
+        return attributes
 
 
 class NextOvulationDateSensor(CycleTrackerSensor):
-    """Sensor for next predicted ovulation date."""
+    """Sensor for the next predicted ovulation center."""
 
     def __init__(
         self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
@@ -160,29 +192,32 @@ class NextOvulationDateSensor(CycleTrackerSensor):
         self._attr_icon = "mdi:egg"
 
     @property
-    def native_value(self) -> str | None:
-        """Return the next predicted ovulation date."""
-        if not self.coordinator.get_last_period_start():
+    def native_value(self) -> date | None:
+        """Return the predicted ovulation center date."""
+        prediction = self._prediction
+        if prediction is None:
             return None
-        from datetime import date, timedelta
-
-        last_start = self.coordinator.get_last_period_start()
-        if not last_start:
-            return None
-        last = date.fromisoformat(last_start)
-        cycle_length = self.coordinator.get_cycle_length()
-        ovulation_day = cycle_length // 2
-        next_ovulation = last + timedelta(days=ovulation_day)
-        if next_ovulation < date.today():
-            next_ovulation += timedelta(days=cycle_length)
-        return next_ovulation.isoformat()
+        return prediction.ovulation_center
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional attributes."""
-        return {
-            ATTR_NEXT_OVULATION_DATE: self.native_value,
+        """Return the ovulation and fertile windows."""
+        prediction = self._prediction
+        attributes: dict[str, Any] = {
+            ATTR_NEXT_OVULATION_DATE: (
+                prediction.ovulation_center.isoformat()
+                if prediction is not None
+                else None
+            )
         }
+        if prediction is not None:
+            ovulation_start, ovulation_end = prediction.ovulation
+            fertile_start, fertile_end = prediction.fertile
+            attributes[ATTR_OVULATION_WINDOW_START] = ovulation_start.isoformat()
+            attributes[ATTR_OVULATION_WINDOW_END] = ovulation_end.isoformat()
+            attributes[ATTR_FERTILE_WINDOW_START] = fertile_start.isoformat()
+            attributes[ATTR_FERTILE_WINDOW_END] = fertile_end.isoformat()
+        return attributes
 
 
 class DaysUntilPeriodSensor(CycleTrackerSensor):
@@ -197,24 +232,21 @@ class DaysUntilPeriodSensor(CycleTrackerSensor):
 
     @property
     def native_value(self) -> int | None:
-        """Return days until next period."""
-        if not self.coordinator.get_last_period_start():
+        """Return days until the predicted period, zero when due or late."""
+        prediction = self._prediction
+        if prediction is None:
             return None
-        from datetime import date
-
-        next_period = self.coordinator.predict_next_period(date.today().isoformat())
-        if not next_period:
-            return None
-        next_date = date.fromisoformat(next_period)
-        delta = (next_date - date.today()).days
-        return max(0, delta)
+        return prediction.days_until_period
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional attributes."""
-        return {
-            ATTR_DAYS_UNTIL_PERIOD: self.native_value,
-        }
+        """Return the late state that distinguishes overdue from due today."""
+        attributes: dict[str, Any] = {ATTR_DAYS_UNTIL_PERIOD: self.native_value}
+        prediction = self._prediction
+        if prediction is not None:
+            attributes[ATTR_IS_LATE] = prediction.is_late
+            attributes[ATTR_DAYS_LATE] = prediction.days_late
+        return attributes
 
 
 class DaysUntilOvulationSensor(CycleTrackerSensor):
@@ -231,17 +263,11 @@ class DaysUntilOvulationSensor(CycleTrackerSensor):
 
     @property
     def native_value(self) -> int | None:
-        """Return days until next ovulation."""
-        if not self.coordinator.get_last_period_start():
+        """Return days until the predicted ovulation center."""
+        prediction = self._prediction
+        if prediction is None:
             return None
-        from datetime import date
-
-        next_ovulation = self.coordinator.get_next_ovulation_date()
-        if not next_ovulation:
-            return None
-        next_date = date.fromisoformat(next_ovulation)
-        delta = (next_date - date.today()).days
-        return max(0, delta)
+        return prediction.days_until_ovulation
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
@@ -262,19 +288,31 @@ class CycleStatisticsSensor(CycleTrackerSensor):
 
     @property
     def native_value(self) -> int:
-        """Return total cycles tracked."""
-        stats = self.coordinator.get_statistics()
-        return stats.get("total_cycles_tracked", 0)
+        """Return the number of recorded periods."""
+        return self._snapshot.statistics.total_cycles_tracked
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return additional attributes."""
-        stats = self.coordinator.get_statistics()
-        return {
-            ATTR_AVERAGE_CYCLE_LENGTH: stats.get("average_cycle_length"),
-            ATTR_AVERAGE_PERIOD_LENGTH: stats.get("average_period_length"),
-            ATTR_STD_DEV_CYCLE: stats.get("cycle_length_std_dev"),
-            ATTR_STD_DEV_PERIOD: stats.get("period_length_std_dev"),
-            ATTR_TOTAL_CYCLES_TRACKED: stats.get("total_cycles_tracked"),
-            ATTR_PREDICTION_CONFIDENCE: 0.5,
+        """Return the windowed statistics, confidence and warnings."""
+        snapshot = self._snapshot
+        statistics = snapshot.statistics
+        band = statistics.confidence_band
+        attributes: dict[str, Any] = {
+            ATTR_AVERAGE_CYCLE_LENGTH: statistics.average_cycle_length,
+            ATTR_AVERAGE_PERIOD_LENGTH: statistics.average_period_length,
+            ATTR_STD_DEV_CYCLE: statistics.cycle_length_std_dev,
+            ATTR_STD_DEV_PERIOD: statistics.period_length_std_dev,
+            ATTR_SHORTEST_CYCLE: statistics.shortest_cycle,
+            ATTR_LONGEST_CYCLE: statistics.longest_cycle,
+            ATTR_TOTAL_CYCLES_TRACKED: statistics.total_cycles_tracked,
+            ATTR_PREDICTION_CONFIDENCE: statistics.confidence,
+            ATTR_CONFIDENCE_BAND: band.value if band is not None else None,
         }
+        prediction = snapshot.prediction
+        if prediction is not None:
+            attributes[ATTR_USABLE_CYCLE_COUNT] = prediction.usable_cycle_count
+            attributes[ATTR_WARNINGS] = [
+                {"kind": str(warning.kind), "period_id": str(warning.period_id)}
+                for warning in prediction.warnings
+            ]
+        return attributes

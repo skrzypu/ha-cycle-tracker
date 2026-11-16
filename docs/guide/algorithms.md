@@ -34,17 +34,22 @@ dates. Prediction is only as good as the history behind it:
 
 - **Minimum history:** two completed cycles. Before that, the prediction sensor
   is `unknown` — the configured cycle length is not used as a fake prediction.
-- **History window:** the most recent six completed cycles feed the prediction.
+- **History window:** the six most recent usable completed cycles feed the
+  prediction. Outliers and gaps are removed first, so an excluded cycle does not
+  take a slot.
 - **Algorithms:** you choose one of three —
   - **Arithmetic mean** — averages the cycle lengths equally.
   - **Weighted moving average** — weights newer cycles more heavily (the
     default).
   - **Median** — the middle value, most resistant to outliers.
-- **Outliers:** cycles outside 15–90 days are excluded from prediction only.
-  They stay in your history and statistics and produce a warning, so you can
-  fix a typo or accept a genuinely long cycle.
+- **Outliers:** cycles outside 15–90 days are excluded from prediction and
+  from the cycle-length statistics. They stay in your recorded history and in
+  the tracked-period count, and produce a warning, so you can fix a typo or
+  accept a genuinely long cycle.
 - **Data gaps:** a gap longer than 90 days is treated as missing data, not a
-  cycle, and is excluded the same way.
+  cycle, and is excluded the same way. It also ends the history window: only
+  cycles recorded after the most recent long gap feed the prediction, so after a
+  long break you need two new cycles before a prediction returns.
 
 The full derivation, from recorded periods to the values on the sensors:
 
@@ -68,8 +73,9 @@ A single predicted date would read as more certain than it is. Cycle Tracker
 shows a date together with the windows around it:
 
 - **Uncertainty window** — the predicted next period ±1 standard deviation of
-  the cycle lengths used, with a lower bound of ±2 days. When there is no
-  deviation, the window collapses to the predicted date.
+  the cycle lengths used, with a lower bound of ±2 days. The ±2-day floor holds
+  even when the cycles are identical, so a steady two-cycle history does not
+  look more certain than it is.
 - **Ovulation window** — centered on the predicted next period minus 14 days,
   ±2 days.
 - **Fertile window** — the five days before ovulation through ovulation day
@@ -139,5 +145,5 @@ automation:
             {{ states('sensor.cycle_tracker_next_period_date') }}.
 ```
 
-Sensors return `unknown` until at least two completed cycles have been logged,
-so guard automations accordingly.
+Prediction sensors return `unknown` until at least two usable completed cycles
+have been logged, so guard automations accordingly.

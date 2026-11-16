@@ -55,11 +55,14 @@ only then promoted.
 
 ## Order of work
 
-1. **Prediction algorithms** — what the product promises. **Decided** in BDR-0004.
+1. **Prediction algorithms** — what the product promises. **Decided** in BDR-0004
+   and **implemented** in the `add-cycle-prediction` change.
 2. **Domain data model** — entities, invariants, identity, `Clock`, repository
-   port. **Decided** in ADR-0006; next step is implementation planning.
-3. **Migrate the coordinator** — move domain logic into use cases; the
-   coordinator becomes an adapter.
+   port. **Decided** in ADR-0006 and **implemented** in
+   `custom_components/cycle_tracker/domain/`.
+3. **Migrate the coordinator** — the prediction seam is done: the coordinator is
+   now an adapter around `build_snapshot`. The remaining use cases (`log_start`,
+   `log_end`, persistence) still live in the coordinator.
 4. **Persistence port and adapters** — local cache first, then the proposed
    Google Sheets adapter (ADR-0004 stays `proposed` until the model is settled).
 5. **Lovelace card** — depends on stable entities; change is parked.

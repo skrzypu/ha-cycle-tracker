@@ -5,12 +5,12 @@ A Home Assistant custom integration for menstrual cycle tracking, with cycle-len
 ## Features
 
 - Current cycle day and cycle phase (`menstrual`, `follicular`, `ovulatory`, `luteal`)
-- Predicted next period date and next ovulation date
-- Countdown sensors for days until the next period and the next ovulation
-- Cycle statistics: average cycle length, average period length, standard deviations, total cycles tracked
-- Calendar entity listing recorded periods plus 12 predicted future periods
+- Predicted next period date with an uncertainty window, and a predicted ovulation center with ovulation and fertile windows
+- Countdown sensors for days until the next period and the next ovulation, with an explicit late state
+- Cycle statistics over the prediction window: average cycle length, average period length, standard deviations, total recorded periods, and a confidence value with a band
+- Calendar entity listing recorded periods plus projected predicted periods, ovulation windows and fertile windows
 - Two services to log period start and period end, including flow intensity
-- Two selectable prediction algorithms: arithmetic mean and weighted moving average
+- Three selectable prediction algorithms: arithmetic mean, weighted moving average and median
 - Fully local: no cloud calls, no external API, no telemetry
 
 ## Requirements
@@ -52,13 +52,14 @@ All settings can be changed afterwards through **Configure** on the integration 
 
 Cycle lengths are derived from the differences between consecutive recorded period start dates.
 
-- Once at least three periods have been logged (two or more cycle lengths), the next period is predicted from the most recent six cycle lengths, using the algorithm selected in the options.
-- With fewer records, the configured `cycle_length` is used instead.
-- `arithmetic_mean` averages all recorded cycle lengths equally.
-- `weighted_moving_average` weights newer cycles more heavily than older ones.
-- The next ovulation is estimated at half the configured cycle length after the last recorded period start.
+- Once at least two usable completed cycles exist, the next period is predicted from the most recent six usable cycle lengths, using the algorithm selected in the options.
+- Cycles outside the 15–90 day bounds and everything recorded at or before the most recent gap longer than 90 days are excluded from prediction and reported as warnings.
+- Below two usable cycles, the prediction sensors report `unknown`; the configured `cycle_length` is not used as a fallback.
+- `arithmetic_mean` averages the cycle lengths equally, `weighted_moving_average` weights newer cycles more heavily, and `median` takes the middle value.
+- The predicted date comes with an uncertainty window of ±1 standard deviation, never narrower than ±2 days.
+- The ovulation center is 14 days before the predicted next period, with a ±2-day ovulation window and a six-day fertile window ending on the center.
 
-Entities are recalculated every 6 hours and refreshed immediately whenever a period is logged.
+Entities are recalculated every 6 hours, and the derived snapshot is rebuilt when the local date changes, so the late flag flips at midnight.
 
 For a full explanation of how prediction works — the phases, the prediction
 windows, and what confidence means — see the
@@ -70,16 +71,16 @@ All entities are grouped under a single **Cycle Tracker** device.
 
 | Entity ID | Friendly name | Description |
 | --- | --- | --- |
-| `sensor.cycle_tracker_cycle_day` | Cycle Tracker Cycle Day | Day number within the current cycle |
-| `sensor.cycle_tracker_cycle_phase` | Cycle Tracker Cycle Phase | `menstrual`, `follicular`, `ovulatory` or `luteal` |
-| `sensor.cycle_tracker_next_period_date` | Cycle Tracker Next Period Date | Predicted start date of the next period |
-| `sensor.cycle_tracker_next_ovulation_date` | Cycle Tracker Next Ovulation Date | Predicted date of the next ovulation |
-| `sensor.cycle_tracker_days_until_period` | Cycle Tracker Days Until Period | Days remaining until the predicted next period (never negative) |
-| `sensor.cycle_tracker_days_until_ovulation` | Cycle Tracker Days Until Ovulation | Days remaining until the predicted next ovulation (never negative) |
-| `sensor.cycle_tracker_statistics` | Cycle Tracker Statistics | Total number of tracked cycles; attributes: `average_cycle_length`, `average_period_length`, `cycle_length_std_dev`, `period_length_std_dev`, `total_cycles_tracked`, `prediction_confidence` |
-| `calendar.menstrual_cycle` | Menstrual Cycle | Recorded periods and 12 predicted future periods |
+| `sensor.cycle_tracker_cycle_day` | Cycle Tracker Cycle Day | Elapsed day in the current cycle, which keeps counting past the configured cycle length instead of wrapping |
+| `sensor.cycle_tracker_cycle_phase` | Cycle Tracker Cycle Phase | `menstrual`, `follicular`, `ovulatory` or `luteal`, derived from the ovulation window; `unknown` without a prediction |
+| `sensor.cycle_tracker_next_period_date` | Cycle Tracker Next Period Date | Predicted start date of the next period; `unknown` below two usable completed cycles; attributes: `uncertainty_start`, `uncertainty_end`, `predicted_cycle_length`, `usable_cycle_count` |
+| `sensor.cycle_tracker_next_ovulation_date` | Cycle Tracker Next Ovulation Date | Predicted ovulation center; attributes: `ovulation_window_start`, `ovulation_window_end`, `fertile_window_start`, `fertile_window_end` |
+| `sensor.cycle_tracker_days_until_period` | Cycle Tracker Days Until Period | Days remaining until the predicted next period, `0` when the period is due or late; attributes: `is_late`, `days_late` |
+| `sensor.cycle_tracker_days_until_ovulation` | Cycle Tracker Days Until Ovulation | Days remaining until the predicted ovulation center |
+| `sensor.cycle_tracker_statistics` | Cycle Tracker Statistics | Number of recorded periods; attributes: `average_cycle_length`, `average_period_length`, `cycle_length_std_dev`, `period_length_std_dev`, `shortest_cycle`, `longest_cycle`, `total_cycles_tracked`, `prediction_confidence`, `confidence_band`, `usable_cycle_count`, `warnings` |
+| `calendar.menstrual_cycle` | Menstrual Cycle | Recorded periods plus the projected predicted period, ovulation window and fertile window |
 
-Sensors return an unknown state until the first period start has been recorded. Entity IDs can be renamed from the entity settings, so they are not guaranteed to stay exactly as listed above.
+Prediction-dependent sensors return an unknown state until at least two usable completed cycles have been recorded. Entity IDs can be renamed from the entity settings, so they are not guaranteed to stay exactly as listed above.
 
 ## Services
 
@@ -147,7 +148,7 @@ uv venv .venv --python 3.13
 uv pip install --python .venv/bin/python -r requirements-dev.txt
 ```
 
-The test suite is currently being rebuilt from the roadmap specifications; the previous unit suite was removed and is preserved in git history. Until tests return, `pre-commit run --all-files` (`ruff`, `ruff-format`, `mypy`) is the local quality gate.
+`pytest` covers the pure prediction domain (`tests/domain`), the Home Assistant adapters (`tests/adapters`) and the domain import boundary (`tests/imports`). `pre-commit run --all-files` is the local quality gate: `ruff`, `ruff-format`, `mypy` over `custom_components/` against the real Home Assistant types, and the full test suite.
 
 The GitHub Actions workflow in `.github/workflows/` runs the pre-commit hooks on every push and pull request, and a separate workflow runs the HACS and Hassfest validators.
 
