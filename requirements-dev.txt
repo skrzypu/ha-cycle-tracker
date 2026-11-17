@@ -2,7 +2,7 @@
 #
 # pytest-homeassistant-custom-component 0.13.305 pins homeassistant==2026.1.0
 # and requires Python >= 3.13, so this file only resolves on CPython 3.13+.
-# Bump the pin only together with the HA baseline in manifest.json / hacs.json.
+# Bump the pin only together with the HA baseline in hacs.json.
 pytest-homeassistant-custom-component==0.13.305
 pytest
 pyyaml
