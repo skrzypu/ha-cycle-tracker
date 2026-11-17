@@ -1,14 +1,15 @@
 {
   "domain": "cycle_tracker",
   "name": "Cycle Tracker",
-  "version": "0.1.0",
+  "categories": ["health_wellbeing"],
+  "codeowners": ["@skrzypu"],
+  "config_flow": true,
+  "dependencies": [],
   "documentation": "https://github.com/skrzypu/ha-cycle-tracker",
+  "homeassistant": "2026.1.0",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
   "issue_tracker": "https://github.com/skrzypu/ha-cycle-tracker/issues",
   "requirements": [],
-  "iot_class": "local_polling",
-  "config_flow": true,
-  "integration_type": "hub",
-  "dependencies": [],
-  "homeassistant": "2026.1.0",
-  "codeowners": ["@skrzypu"]
+  "version": "0.1.0"
 }
