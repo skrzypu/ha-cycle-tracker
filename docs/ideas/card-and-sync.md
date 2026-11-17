@@ -102,3 +102,31 @@ product questions around it.
 - **Open questions:** binary sensor vs attribute on an existing sensor? Does it
   belong in the card change or a separate one?
 - **Decision:** —
+
+### I-008: A tab for invalid sheet rows
+
+- **Status:** idea
+- **Problem:** manual entries in the sheet can be wrong (a date typo, an end
+  before its start, a duplicate id). The project "excludes and reports" them as
+  a small repair issue, so the user cannot see clearly which rows are broken and
+  why.
+- **Idea:** a dedicated place in Home Assistant (a tab, view or card) that lists
+  the rejected rows: row/id, value, and reason. It joins up with manual
+  correction — in the sheet, or in Home Assistant (I-007).
+- **Value:** the user can fix what she mistyped without guessing; a broken row
+  does not vanish silently and does not poison predictions.
+- **Constraints / conflicts:** extends the parked `google-sheets-source-of-truth`
+  design decisions 8 and 9 (exclude-and-report, repair issues); builds on
+  `DataWarning` from ADR-0006; fixing from Home Assistant is I-007.
+- **Dependencies:**
+  - BDR-0003 (the sheet is canonical) — known
+  - ADR-0004 (Google Sheets source of truth) — known
+  - ADR-0006 (`DataWarning` = "what is wrong") — known
+  - parked `google-sheets-source-of-truth` design, decisions 8–9 — known
+  - I-007 (the fix side) — dependency unknown (does I-008 require I-007, or
+    stand alone?)
+  - `add-lovelace-card` (the UI surface) — dependency unknown (the card is
+    parked, so the tab's form is undetermined)
+- **Open questions:** a Lovelace tab or a card section? Can the row be fixed in
+  Home Assistant directly? Does it also show rows dropped for extra columns?
+- **Decision:** —

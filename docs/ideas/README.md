@@ -55,6 +55,7 @@ only then promoted.
 | [domain-model.md](domain-model.md) | Domain entities, invariants, identity, ports | decided — ADR-0006 |
 | [card-and-sync.md](card-and-sync.md) | Lovelace card design and external data copy (Sheets, Drive) | idea |
 | [period-logging.md](period-logging.md) | Backdating a period start, closing a specific past period, dedup | idea |
+| [safe-days.md](safe-days.md) | Safe days for unprotected sex: today's status, upcoming ranges, confidence | idea |
 | [parked/](parked/README.md) | Drafted OpenSpec changes that are not active work | parked |
 
 ## Order of work
