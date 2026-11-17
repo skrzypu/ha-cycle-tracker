@@ -40,6 +40,9 @@ only then promoted.
 - **Idea:** what we would do
 - **Value:** who benefits and how
 - **Constraints / conflicts:** ADRs, specs, effort, privacy
+- **Dependencies:**
+  - ADR-0000 / BDR-0000 / I-000 / `change-name` — known
+  - something unconfirmed — dependency unknown
 - **Open questions:** what must be answered before deciding
 - **Decision:** link to ADR/BDR/change, or the reason for parked/rejected
 ```
@@ -51,6 +54,7 @@ only then promoted.
 | [prediction-algorithms.md](prediction-algorithms.md) | Prediction inputs, outliers, confidence, ovulation, phases | decided — BDR-0004 |
 | [domain-model.md](domain-model.md) | Domain entities, invariants, identity, ports | decided — ADR-0006 |
 | [card-and-sync.md](card-and-sync.md) | Lovelace card design and external data copy (Sheets, Drive) | idea |
+| [period-logging.md](period-logging.md) | Backdating a period start, closing a specific past period, dedup | idea |
 | [parked/](parked/README.md) | Drafted OpenSpec changes that are not active work | parked |
 
 ## Order of work
