@@ -73,10 +73,11 @@ component, and HACS ships the component directory only).
 @dataclass(frozen=True)
 class PredictionConfig:
     period_length: int
-    cycle_length: int          # used only for the single-cycle statistics fallback
+    cycle_length: int  # used only for the single-cycle statistics fallback
     outlier_min_days: int = 15
     outlier_max_days: int = 90
     gap_days: int = 90
+
 
 def predict(
     periods: Sequence[Period],
@@ -116,6 +117,7 @@ describe the present.
 ```python
 class PredictionStrategy(Protocol):
     def __call__(self, lengths: Sequence[int]) -> int: ...
+
 
 STRATEGIES = {"arithmetic_mean": ..., "weighted_moving_average": ..., "median": ...}
 ```
