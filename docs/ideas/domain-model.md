@@ -55,26 +55,28 @@ Derived from `prediction-algorithms.md`, which is the source of these answers.
 ```python
 @dataclass(frozen=True)
 class Period:
-    id: PeriodId          # UUID, stable for the life of the row
+    id: PeriodId  # UUID, stable for the life of the row
     start: date
     end: date | None = None
     flow: FlowIntensity | None = None
     notes: str | None = None
     updated_at: datetime | None = None
 
-@dataclass(frozen=True)
-class Cycle:              # derived, never persisted
-    start: date
-    length_days: int      # start-to-start
-    period: Period
 
 @dataclass(frozen=True)
-class Prediction:         # derived, never persisted
+class Cycle:  # derived, never persisted
+    start: date
+    length_days: int  # start-to-start
+    period: Period
+
+
+@dataclass(frozen=True)
+class Prediction:  # derived, never persisted
     next_period: date
     uncertainty: tuple[date, date]
     ovulation: tuple[date, date]
     fertile: tuple[date, date]
-    confidence: float     # 0..1
+    confidence: float  # 0..1
     confidence_band: str  # low / medium / high
     is_late: bool
     warnings: tuple[DataWarning, ...]

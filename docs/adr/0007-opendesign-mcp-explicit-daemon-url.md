@@ -6,7 +6,7 @@ date: 2026-11-12
 deciders: []
 supersedes: "ADR-0003"
 superseded-by: null
-related: ["ADR-0002"]
+related: ["ADR-0002", "ADR-0015"]
 ---
 
 # ADR-0007: OpenDesign MCP requires an explicit daemon URL

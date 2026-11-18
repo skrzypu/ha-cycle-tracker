@@ -6,7 +6,7 @@ date: 2026-11-12
 deciders: []
 supersedes: null
 superseded-by: null
-related: ["ADR-0002", "ADR-0007"]
+related: ["ADR-0002", "ADR-0007", "ADR-0015"]
 ---
 
 # ADR-0008: Home Assistant MCP Read-only requires Core 2026.10+

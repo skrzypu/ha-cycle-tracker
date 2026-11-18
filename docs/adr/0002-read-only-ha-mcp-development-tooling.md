@@ -6,7 +6,7 @@ date: 2026-11-09
 deciders: []
 supersedes: null
 superseded-by: null
-related: ["ADR-0001"]
+related: ["ADR-0001", "ADR-0008", "ADR-0015"]
 ---
 
 # ADR-0002: Home Assistant MCP is read-only development tooling, disabled by default

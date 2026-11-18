@@ -18,3 +18,4 @@ Durable technical decisions for this project.
 | [0012](0012-e2e-tests-verify-shipped-contract.md) | E2E tests verify the shipped contract, and their strength is proven by mutation | accepted | 2026-11-16 |
 | [0013](0013-agent-skills-pinned-indexed-reviewed.md) | Agent skills are pinned, indexed and reviewed | accepted | 2026-11-16 |
 | [0014](0014-agent-auditor-verifies-config-truth.md) | An agent auditor periodically verifies that agent and config documentation is still true | accepted | 2026-11-16 |
+| [0015](0015-mcp-access-pre-wired-per-agent-allowlists.md) | MCP access is pre-wired per agent; both servers stay disabled by default | accepted | 2026-11-17 |
