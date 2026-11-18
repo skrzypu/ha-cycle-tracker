@@ -24,7 +24,30 @@
           "enable_notifications": "Enable notifications",
           "notification_time": "Notification time"
         }
+      },
+      "sheet": {
+        "title": "Google Sheet",
+        "description": "Connect a Google Sheet that will be the source of truth for your cycle history. {account_hint}",
+        "data": {
+          "spreadsheet_id": "Spreadsheet ID",
+          "worksheet": "Worksheet name",
+          "service_account_file": "Service account key file path",
+          "poll_interval": "Poll interval (minutes)"
+        }
+      },
+      "import_offer": {
+        "title": "Import cached periods",
+        "description": "Local cycle history was found. Import it into the empty sheet now? A populated sheet always wins, so import must happen before any rows are added to the sheet.",
+        "data": {
+          "import_cached_periods": "Import cached periods into the sheet"
+        }
       }
+    },
+    "error": {
+      "invalid_auth": "Could not authenticate with Google. Check the service-account key file and that the account is shared as an Editor of the spreadsheet.",
+      "sheet_not_found": "Spreadsheet or worksheet not found. Check the IDs and sharing.",
+      "invalid_schema": "The worksheet header is missing required columns.",
+      "cannot_connect": "Could not connect to Google Sheets. Check the key file path and network."
     }
   },
   "options": {
@@ -37,9 +60,19 @@
           "prediction_algorithm": "Prediction algorithm",
           "notification_offset_days": "Days before period to notify",
           "enable_notifications": "Enable notifications",
-          "notification_time": "Notification time"
+          "notification_time": "Notification time",
+          "spreadsheet_id": "Spreadsheet ID",
+          "worksheet": "Worksheet name",
+          "service_account_file": "Service account key file path",
+          "poll_interval": "Poll interval (minutes)"
         }
       }
+    },
+    "error": {
+      "invalid_auth": "Could not authenticate with Google. Check the service-account key file and that the account is shared as an Editor of the spreadsheet.",
+      "sheet_not_found": "Spreadsheet or worksheet not found. Check the IDs and sharing.",
+      "invalid_schema": "The worksheet header is missing required columns.",
+      "cannot_connect": "Could not connect to Google Sheets. Check the key file path and network."
     }
   },
   "selector": {
@@ -57,6 +90,28 @@
         "medium": "Medium",
         "heavy": "Heavy"
       }
+    }
+  },
+  "issues": {
+    "sheet_not_configured": {
+      "title": "Google Sheet not configured",
+      "description": "Cycle Tracker needs a Google Sheet to store your period history. Open the integration options and enter the spreadsheet, worksheet and service-account key file path."
+    },
+    "sheet_auth_failed": {
+      "title": "Google Sheet authentication failed",
+      "description": "Cycle Tracker could not authenticate with Google Sheets. Verify the service-account key file and that the service account is shared as an Editor of the spreadsheet."
+    },
+    "sheet_unreachable": {
+      "title": "Google Sheet unreachable",
+      "description": "Cycle Tracker could not reach Google Sheets. Check the network connection and that the spreadsheet and worksheet exist."
+    },
+    "sheet_schema_invalid": {
+      "title": "Google Sheet header is invalid",
+      "description": "The worksheet is missing one or more required columns. Update the header row before the integration can sync."
+    },
+    "sheet_rows_invalid": {
+      "title": "Google Sheet contains invalid rows",
+      "description": "Cycle Tracker ignored {count} invalid row(s) in the worksheet. Review the sheet for missing start dates or rows that end before they start."
     }
   }
 }

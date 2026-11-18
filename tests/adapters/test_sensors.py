@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, timedelta
+from typing import Any
 
 import pytest
 
@@ -41,7 +42,7 @@ PREDICTION_ENTITIES = (
 
 def _three_regular_cycles(
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     last_start: date,
 ) -> None:
     """Seed three four-week cycles ending in ``last_start``."""
@@ -70,7 +71,7 @@ async def test_prediction_entities_are_unknown_without_history(
 async def test_single_period_keeps_prediction_entities_unknown(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """One recorded period is not a usable cycle and produces no prediction."""
@@ -86,7 +87,7 @@ async def test_single_period_keeps_prediction_entities_unknown(
 async def test_cycle_day_counts_past_the_configured_length(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """Thirty-three elapsed days report cycle day 34 without wrapping."""
@@ -102,7 +103,7 @@ async def test_cycle_day_counts_past_the_configured_length(
 async def test_late_period_reports_zero_days_until_and_a_late_flag(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """A period four days overdue is distinguishable from one due today."""
@@ -126,7 +127,7 @@ async def test_late_period_reports_zero_days_until_and_a_late_flag(
 async def test_prediction_windows_are_exposed(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """The uncertainty, ovulation and fertile windows come from the snapshot."""
@@ -177,7 +178,7 @@ async def test_prediction_windows_are_exposed(
 async def test_statistics_use_the_windowed_history(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """Statistics report the usable window plus confidence and warnings."""
@@ -201,7 +202,7 @@ async def test_statistics_use_the_windowed_history(
 async def test_statistics_report_excluded_cycles_as_warnings(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """An outlier leaves the prediction window and is named in the warnings."""

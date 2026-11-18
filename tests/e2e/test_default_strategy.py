@@ -31,12 +31,13 @@ LogPeriod = Callable[..., Awaitable[None]]
 
 
 @pytest.fixture
-def config_entry_data() -> dict[str, Any]:
+def config_entry_data(sheet_settings: dict[str, Any]) -> dict[str, Any]:
     """Return settings from before the prediction algorithm was persisted."""
     return {
         CONF_CYCLE_LENGTH: 28,
         CONF_PERIOD_LENGTH: 5,
         CONF_LAST_PERIOD_START: "2026-01-01",
+        **sheet_settings,
     }
 
 

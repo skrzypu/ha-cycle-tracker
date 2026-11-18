@@ -98,59 +98,26 @@ async def async_setup_services(hass: HomeAssistant) -> None:
     async def handle_log_start(call: ServiceCall) -> ServiceResponse:
         """Handle log_start service call."""
         coordinator = await _async_resolve_coordinator(hass, call)
-        date_str = call.data["date"].isoformat()
+        start = call.data["date"]
         flow_intensity = call.data["flow_intensity"]
 
-        periods = coordinator.get_periods()
-        if periods and periods[-1]["start_date"] == date_str:
-            # Update existing period
-            periods[-1]["end_date"] = date_str
-            periods[-1]["flow_intensity"] = flow_intensity
-        else:
-            # Add new period, open until log_end closes it
-            coordinator.add_period(
-                {
-                    "start_date": date_str,
-                    "end_date": date_str,
-                    "flow_intensity": flow_intensity,
-                }
-            )
-
-        await coordinator.async_save_data()
+        await coordinator.async_log_start(start, flow_intensity)
         coordinator.async_set_updated_data(coordinator._data)
 
-        return {"success": True, "message": f"Period start logged for {date_str}"}
+        return {
+            "success": True,
+            "message": f"Period start logged for {start.isoformat()}",
+        }
 
     async def handle_log_end(call: ServiceCall) -> ServiceResponse:
         """Handle log_end service call."""
         coordinator = await _async_resolve_coordinator(hass, call)
-        date_str = call.data["date"].isoformat()
+        end = call.data["date"]
 
-        periods = coordinator.get_periods()
-        if not periods:
-            return {"success": False, "message": "No period started to end"}
-
-        last_period = periods[-1]
-        start_date = last_period.get("start_date")
-        # A row without a start date cannot be ended; refuse it like a closed one
-        # instead of failing the service call with a KeyError.
-        if not isinstance(start_date, str) or last_period.get("end_date") != start_date:
-            return {"success": False, "message": "Period already ended"}
-
-        # Stored dates are ISO format, so the comparison needs no parsing.
-        if date_str < start_date:
-            return {
-                "success": False,
-                "message": (
-                    f"End date {date_str} precedes the period start {start_date}"
-                ),
-            }
-
-        last_period["end_date"] = date_str
-        await coordinator.async_save_data()
-        coordinator.async_set_updated_data(coordinator._data)
-
-        return {"success": True, "message": f"Period end logged for {date_str}"}
+        result = await coordinator.async_log_end(end)
+        if result["success"]:
+            coordinator.async_set_updated_data(coordinator._data)
+        return result
 
     hass.services.async_register(
         DOMAIN,

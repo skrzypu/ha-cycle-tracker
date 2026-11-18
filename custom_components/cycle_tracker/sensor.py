@@ -87,6 +87,11 @@ class CycleTrackerSensor(CoordinatorEntity[CycleTrackerCoordinator], SensorEntit
         }
 
     @property
+    def available(self) -> bool:
+        """Mirror the coordinator's availability state."""
+        return self.coordinator.available
+
+    @property
     def _snapshot(self) -> Snapshot:
         """Return the coordinator's prediction snapshot."""
         return self.coordinator.snapshot

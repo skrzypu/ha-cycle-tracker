@@ -16,6 +16,13 @@ CONF_NOTIFICATION_OFFSET_DAYS = "notification_offset_days"
 CONF_ENABLE_NOTIFICATIONS = "enable_notifications"
 CONF_NOTIFICATION_TIME = "notification_time"
 
+# Google Sheets source-of-truth configuration keys
+CONF_SPREADSHEET_ID = "spreadsheet_id"
+CONF_WORKSHEET = "worksheet"
+CONF_SERVICE_ACCOUNT_FILE = "service_account_file"
+CONF_POLL_INTERVAL = "poll_interval"
+CONF_IMPORT_CACHED = "import_cached_periods"
+
 # Default values
 DEFAULT_CYCLE_LENGTH = 28
 DEFAULT_PERIOD_LENGTH = 5
@@ -89,9 +96,18 @@ EVENT_PERIOD_END = f"{DOMAIN}_period_end"
 EVENT_OVULATION = f"{DOMAIN}_ovulation"
 EVENT_NEXT_PERIOD = f"{DOMAIN}_next_period"
 
-# Update interval (hours)
+# Update interval (hours) — kept for compatibility; new code uses poll interval
 DEFAULT_UPDATE_INTERVAL_HOURS = 6
+
+# Google Sheets poll interval (minutes)
+DEFAULT_POLL_INTERVAL_MINUTES = 5
+MIN_POLL_INTERVAL_MINUTES = 1
+MAX_POLL_INTERVAL_MINUTES = 60
 
 # Storage
 STORAGE_KEY = f"{DOMAIN}_data"
 STORAGE_VERSION = 1
+
+# Read-through cache for remote repositories
+STORAGE_KEY_SYNC_CACHE = f"{DOMAIN}_sync_cache"
+STORAGE_VERSION_SYNC_CACHE = 1

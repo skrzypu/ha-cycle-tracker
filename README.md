@@ -11,12 +11,13 @@ A Home Assistant custom integration for menstrual cycle tracking, with cycle-len
 - Calendar entity listing recorded periods plus projected predicted periods, ovulation windows and fertile windows
 - Two services to log period start and period end, including flow intensity
 - Three selectable prediction algorithms: arithmetic mean, weighted moving average and median
-- Fully local: no cloud calls, no external API, no telemetry
+- A Google Sheet you own is the single source of truth, so periods can be entered and edited from anywhere; Home Assistant keeps only a cache of the last successful read
 
 ## Requirements
 
 - Home Assistant **2026.1.0** or newer (declared in `custom_components/cycle_tracker/manifest.json` and `hacs.json`)
 - HACS, if you want to use the HACS installation path (manual installation works without it)
+- A Google Sheet and a Google Cloud service account key (see [Google Sheets setup](#google-sheets-setup))
 
 ## Installation
 
@@ -38,15 +39,18 @@ This integration is **not** part of the HACS default catalog, so it has to be ad
 
 ## Configuration
 
-The config flow has three steps:
+The config flow has four steps:
 
 | Step | Fields |
 | --- | --- |
 | Cycle settings | `cycle_length` (20–45, default 28), `period_length` (2–10, default 5), `last_period_start` (date) |
 | Prediction preferences | `prediction_algorithm` (default `weighted_moving_average`), `notification_offset_days` (0–14, default 2) |
 | Notifications | `enable_notifications` (default false), `notification_time` (default `08:00`) |
+| Google Sheet | `spreadsheet_id`, `worksheet` (default `Sheet1`), `service_account_file` (path, inside the configuration directory), `poll_interval` (1–60 minutes, default 5) |
 
-All settings can be changed afterwards through **Configure** on the integration entry, which exposes cycle length, period length, prediction algorithm, notification offset, and the two notification preferences in a single step.
+The Google Sheet step validates the connection and the header row before the entry is created. If the sheet is empty and you have periods recorded locally, it offers a one-time import of those periods into the sheet.
+
+All settings can be changed afterwards through **Configure** on the integration entry, which exposes cycle length, period length, prediction algorithm, notification offset, the two notification preferences, and the four sheet fields in a single step.
 
 ### Prediction
 
@@ -59,11 +63,52 @@ Cycle lengths are derived from the differences between consecutive recorded peri
 - The predicted date comes with an uncertainty window of ±1 standard deviation, never narrower than ±2 days.
 - The ovulation center is 14 days before the predicted next period, with a ±2-day ovulation window and a six-day fertile window ending on the center.
 
-Entities are recalculated every 6 hours, and the derived snapshot is rebuilt when the local date changes, so the late flag flips at midnight.
+Entities are refreshed from the sheet on the configured poll interval (default 5 minutes), and the derived snapshot is rebuilt when the local date changes, so the late flag flips at midnight. If a sync fails, the last successful snapshot is kept for up to three intervals before the entities report unavailable.
 
 For a full explanation of how prediction works — the phases, the prediction
 windows, and what confidence means — see the
 [user guide](docs/guide/algorithms.md).
+
+## Google Sheets setup
+
+The integration reads and writes a Google Sheet you own through a Google Cloud
+**service account**. You create the sheet and share it with the service account;
+the integration signs in as the service account and treats the sheet as the
+single source of truth.
+
+1. **Create a service account** in the [Google Cloud Console](https://console.cloud.google.com/):
+   create (or select) a project, open **IAM & Admin → Service Accounts**, and
+   create a service account. Under the new account's **Keys** tab, add a key of
+   type **JSON** and download it. Enable the **Google Sheets API** for the
+   project (**APIs & Services → Library → Google Sheets API → Enable**).
+2. **Place the key** inside your Home Assistant configuration directory, for
+   example `<config>/service_account.json`. The integration stores only the path
+   to the key, never the key contents, and rejects paths outside the
+   configuration directory.
+3. **Create the sheet** in [Google Sheets](https://sheets.google.com) and share
+   it with the service account's `client_email` (from the downloaded JSON key; it
+   ends in `@….iam.gserviceaccount.com`) as **Editor**. Share only this one sheet
+   to limit what the key can touch.
+4. **Add the header row** as the first row of the worksheet, with exactly these
+   columns (order does not matter):
+   `period_id`, `start_date`, `end_date`, `flow_intensity`, `notes`, `updated_at`.
+5. In the config flow, enter the **spreadsheet ID** (the long identifier in the
+   sheet's URL), the **worksheet name**, the **key path**, and the **poll
+   interval**.
+
+Rows the integration writes get a `period_id` and an `updated_at` automatically.
+If you add rows by hand, give each a unique `period_id` (a UUID) and an
+`updated_at` ISO timestamp so duplicate handling and edits keep working; leave
+`end_date` empty for a period that is still open.
+
+**Key rotation.** To rotate the key, create a new key for the same service
+account in the Cloud Console, overwrite the key file, and restart Home
+Assistant, then delete the old key. Because the integration stores only the
+path, only the file needs replacing.
+
+**Workspace sharing.** If your Google Workspace organization blocks sharing with
+external service accounts, share the sheet with the `client_email` from within
+the organization, or use a personal Google account.
 
 ## Entities
 
@@ -84,7 +129,7 @@ Prediction-dependent sensors return an unknown state until at least two usable c
 
 ## Services
 
-Both services resolve the configuration entry from the entity or device they are called on, so the action has to be targeted at a Cycle Tracker entity or device.
+Both services resolve the configuration entry from the entity or device they are called on, so the action has to be targeted at a Cycle Tracker entity or device. The services write to the configured Google Sheet and raise an error if the sheet is not configured or is unreachable, so a failed call never reports success.
 
 | Service | Field | Required | Type / allowed values | Description |
 | --- | --- | --- | --- | --- |
@@ -137,7 +182,19 @@ mode: single
 
 ## Privacy
 
-Cycle Tracker has no external dependencies and makes no network requests. Period history and settings are written to Home Assistant's own storage (`.storage/cycle_tracker_data` inside your configuration directory) and never leave the instance. The integration declares `iot_class: local_polling` because its only data source is that local storage; it does not collect or transmit any telemetry.
+Your cycle data is **special-category health data**. The configured Google Sheet
+is the single source of truth for recorded periods, so the data is **sent to and
+readable by Google** whenever the integration syncs
+([ADR-0004](docs/adr/0004-google-sheets-source-of-truth.md)). Home Assistant
+keeps only a cache of the last successful read (in `.storage/`), and the
+integration makes no other network requests and collects no telemetry.
+
+The service account key is stored only as a path in the config entry; the key
+file itself lives in your configuration directory and therefore in your backups
+(encrypted by default). The key grants access only to the sheet you share with
+it, so share a single sheet with **Editor** access to limit the blast radius,
+and rotate the key if it is ever exposed. If you remove the sheet configuration
+later, periods that were never written to a sheet are no longer accessible.
 
 ## Development
 
@@ -167,20 +224,45 @@ applied and whether they still earn their place is listed in
 `SKILL.md` files, is the review surface
 ([ADR-0013](docs/adr/0013-agent-skills-pinned-indexed-reviewed.md)).
 
-Two opt-in MCP servers are configured in `opencode.json` for debugging against a
-live Home Assistant instance and previewing the Lovelace card in OpenDesign. Both
-entries are `disabled: true` by default and are turned on only for a specific
-session.
+Two MCP servers are configured in `opencode.json`: Home Assistant for debugging
+against a live instance, and OpenDesign for card design work. Both stay
+`disabled: true` by default — nothing connects, no tool schemas are loaded, and
+no state leaves the machine. Access is already wired per agent in the `mcps`
+lists of [`.opencode/oh-my-opencode-slim.json`](.opencode/oh-my-opencode-slim.json),
+so enabling one is a single-line change: set `"disabled": false` on
+`mcp.servers.<name>` in `opencode.json`, restart opencode, and set it back to
+`true` when done.
 
-> **Data-exposure warning.** Enabling the Home Assistant MCP server sends entity
-> states, attributes, history, and logs to the model provider. Home Assistant's
-> Read-only mode limits writes, not exposure. Keep the entry disabled unless you
-> are actively debugging.
+Once a server is enabled, these agents receive its tools:
+
+| Agent | `homeassistant` | `opendesign` |
+| --- | --- | --- |
+| `orchestrator` | yes | yes |
+| `designer` | yes | yes |
+| `oracle` | yes | no |
+| `explorer` | yes | no |
+| `fixer` | yes | no |
+| `librarian` | no | no |
+| `observer` | no | no |
+
+An agent whose list omits a server is denied that server's tools by an
+agent-level `<server>_*` permission rule generated by the plugin. Custom agents
+defined in `.opencode/agent/*.md` are not covered by that mechanism and fall back
+to the global rules in `opencode.json`.
+
+> **Data-exposure warning.** While the Home Assistant server is enabled, its
+> tools send entity states, attributes, history, and logs to the model provider
+> whenever an agent reads them. Home Assistant's Read-only mode limits writes,
+> not exposure. Turn the entry off again when the debugging session ends, and
+> remove `homeassistant` from an agent's `mcps` list if that agent should never
+> see it.
 
 ### Home Assistant MCP (read-only)
 
 Rationale: [ADR-0002](docs/adr/0002-read-only-ha-mcp-development-tooling.md),
-[ADR-0008](docs/adr/0008-home-assistant-mcp-read-only-core-version.md).
+[ADR-0008](docs/adr/0008-home-assistant-mcp-read-only-core-version.md),
+[ADR-0015](docs/adr/0015-mcp-access-pre-wired-per-agent-allowlists.md)
+(ADR-0015 keeps "disabled by default" and pre-wires the per-agent allowlists).
 
 1. In Home Assistant, create an administrator **long-lived access token**:
    **Profile → Security → Long-lived access tokens → Create token**.
@@ -203,22 +285,31 @@ Rationale: [ADR-0002](docs/adr/0002-read-only-ha-mcp-development-tooling.md),
    Protocol → Configure → Read-only** on. (The Read-only option requires
    Home Assistant 2026.10 or newer.)
 
-Verify the token and endpoint — substitute `<HA_HOST>` with your Home Assistant
-address (it must match `mcp.servers.homeassistant.url`, which uses the same
-placeholder):
+The URL is `http://{env:HA_MCP_HOST}:8123/api/mcp`, so the address stays out of
+the repository. Export it in the shell that starts opencode (and persist it in
+your shell profile):
 
 ```bash
-curl -fsS -H "Authorization: Bearer $(cat ~/.secrets/ha_mcp_token)" http://<HA_HOST>:8123/api/
+export HA_MCP_HOST=192.168.1.10
 ```
 
-To enable it for a debugging session, replace `<HA_HOST>` in
-`mcp.servers.homeassistant.url` with your instance's address, set `"disabled":
-false`, and restart opencode; set it back to `true` when done.
+Verify the token and endpoint:
+
+```bash
+curl -fsS -H "Authorization: Bearer $(cat ~/.secrets/ha_mcp_token)" \
+  "http://$HA_MCP_HOST:8123/api/"
+```
+
+If `HA_MCP_HOST` is unset, the substitution yields an empty string and opencode
+logs `Invalid MCP URL` for the server after you set `"disabled": false`; the rest
+of opencode still starts.
 
 ### OpenDesign (Docker)
 
 Rationale: [ADR-0007](docs/adr/0007-opendesign-mcp-explicit-daemon-url.md)
-(supersedes ADR-0003).
+(supersedes ADR-0003), and
+[ADR-0015](docs/adr/0015-mcp-access-pre-wired-per-agent-allowlists.md)
+(keeps "disabled by default" and pre-wires the per-agent allowlists).
 
 1. Install Docker Engine (Ubuntu/WSL: `sudo apt-get install -y docker.io`), add
    your user to the `docker` group, then log out and back in.
@@ -239,8 +330,11 @@ The MCP server is a stdio process reached through `docker exec`. It must pass
 does not work through `docker exec`; this is already set in
 `mcp.servers.opendesign`.
 
-To enable it for a session, set `"disabled": false` on `mcp.servers.opendesign`
-and restart opencode.
+Enable it with `"disabled": false` on `mcp.servers.opendesign` and restart
+opencode; the container must be running (`docker start open-design`), otherwise
+opencode logs a failed MCP start and continues. Destructive tools stay removed by
+the `opendesign_delete_*` deny rule, so `delete_file` and `delete_project` never
+reach an agent.
 
 The `opendesign` MCP server exposes 22 tools:
 - **Read** (12): `list_projects`, `get_active_context`, `get_artifact`,

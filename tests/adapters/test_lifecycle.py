@@ -50,18 +50,18 @@ async def test_unload_shuts_the_coordinator_down(
     assert entry.entry_id not in hass.data[DOMAIN]
 
 
-async def test_the_coordinator_refreshes_every_six_hours(
+async def test_the_coordinator_polls_the_sheet_every_five_minutes(
     hass: HomeAssistant,
     coordinator: CycleTrackerCoordinator,
     config_entry: MockConfigEntry,
 ) -> None:
-    """The running coordinator recalculates on the documented six-hour cycle.
+    """The running coordinator re-syncs from the sheet on a five-minute cycle.
 
-    README states "Entities are recalculated every 6 hours". The interval is
-    spelled out as ``timedelta(hours=6)`` rather than via
-    ``DEFAULT_UPDATE_INTERVAL_HOURS`` so a drift between the documented value
+    README states the sheet is polled every 5 minutes. The interval is spelled
+    out as ``timedelta(minutes=5)`` rather than via
+    ``DEFAULT_POLL_INTERVAL_MINUTES`` so a drift between the documented value
     and the scheduler fails here. Date-change rebuilds are separate behaviour,
     covered by ``test_snapshot_rebuilds_when_the_reference_date_changes``.
     """
     assert hass.data[DOMAIN][config_entry.entry_id] is coordinator
-    assert coordinator.update_interval == timedelta(hours=6)
+    assert coordinator.update_interval == timedelta(minutes=5)

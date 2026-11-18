@@ -57,6 +57,11 @@ class MenstrualCycleCalendar(
         }
 
     @property
+    def available(self) -> bool:
+        """Mirror the coordinator's availability state."""
+        return self.coordinator.available
+
+    @property
     def event(self) -> CalendarEvent | None:
         """Return the next upcoming event."""
         events = self._get_events()

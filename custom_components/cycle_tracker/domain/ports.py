@@ -10,6 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import date
 from typing import Protocol, runtime_checkable
+from uuid import UUID
+
+from .models import Period
 
 DEFAULT_OUTLIER_MIN_DAYS = 15
 DEFAULT_OUTLIER_MAX_DAYS = 90
@@ -40,4 +43,25 @@ class Clock(Protocol):
 
     def today(self) -> date:
         """Return the current local date."""
+        ...
+
+
+@runtime_checkable
+class PeriodRepository(Protocol):
+    """Persistence port for recorded periods.
+
+    Implementations are replaceable (local Store, Google Sheets, in-memory) and
+    owned by the adapter layer; the domain only sees this protocol.
+    """
+
+    async def read_all(self) -> list[Period]:
+        """Return all stored periods, sorted by start date."""
+        ...
+
+    async def upsert(self, period: Period) -> None:
+        """Insert a new period or replace the existing one with the same id."""
+        ...
+
+    async def delete(self, period_id: UUID) -> None:
+        """Remove the period with the given id, if it exists."""
         ...

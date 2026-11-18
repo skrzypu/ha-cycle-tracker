@@ -9,11 +9,11 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Any
+from uuid import UUID
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers.storage import Store
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.cycle_tracker.const import (
@@ -24,8 +24,6 @@ from custom_components.cycle_tracker.const import (
     DOMAIN,
     SERVICE_LOG_END,
     SERVICE_LOG_START,
-    STORAGE_KEY,
-    STORAGE_VERSION,
 )
 from custom_components.cycle_tracker.coordinator import CycleTrackerCoordinator
 
@@ -78,14 +76,13 @@ async def test_log_start_without_target_records_open_period(
     response = await _call_service(hass, SERVICE_LOG_START, {"date": start})
 
     assert response["success"] is True
-    assert coordinator.get_periods() == [
-        period_row(frozen_today - timedelta(days=60), length=3),
-        {
-            "start_date": start.isoformat(),
-            "end_date": start.isoformat(),
-            "flow_intensity": "medium",
-        },
-    ]
+    periods = coordinator.get_periods()
+    assert len(periods) == 2
+    assert periods[0] == period_row(frozen_today - timedelta(days=60), length=3)
+    assert periods[1]["start_date"] == start.isoformat()
+    assert periods[1]["end_date"] == start.isoformat()
+    assert periods[1]["flow_intensity"] == "medium"
+    assert UUID(periods[1]["period_id"])
     # The open period adds a recorded period but no period length.
     assert coordinator.snapshot.statistics.total_cycles_tracked == 2
     assert coordinator.snapshot.statistics.average_period_length == closed_average
@@ -107,11 +104,10 @@ async def test_log_start_and_log_end_with_entity_target(
 
     assert response["success"] is True
     opened = coordinator.get_periods()[-1]
-    assert opened == {
-        "start_date": start.isoformat(),
-        "end_date": start.isoformat(),
-        "flow_intensity": "light",
-    }
+    assert opened["start_date"] == start.isoformat()
+    assert opened["end_date"] == start.isoformat()
+    assert opened["flow_intensity"] == "light"
+    assert UUID(opened["period_id"])
     assert coordinator.snapshot.statistics.average_period_length == 5.0
 
     end = start + timedelta(days=3)
@@ -123,13 +119,14 @@ async def test_log_start_and_log_end_with_entity_target(
     )
 
     assert response["success"] is True
-    assert coordinator.get_periods() == [
-        {
-            "start_date": start.isoformat(),
-            "end_date": end.isoformat(),
-            "flow_intensity": "light",
-        }
-    ]
+    periods = coordinator.get_periods()
+    assert len(periods) == 1
+    assert periods[0]["period_id"] == opened["period_id"]
+    assert periods[0]["start_date"] == start.isoformat()
+    assert periods[0]["end_date"] == end.isoformat()
+    assert periods[0]["flow_intensity"] == "light"
+    assert periods[0]["notes"] is None
+    assert isinstance(periods[0]["updated_at"], str)
     # Four bleeding days now count instead of the configured five.
     assert coordinator.snapshot.statistics.average_period_length == 4.0
 
@@ -187,12 +184,14 @@ async def test_log_start_without_target_rejects_ambiguous_entries(
 async def test_log_end_before_start_is_refused(
     hass: HomeAssistant,
     coordinator: CycleTrackerCoordinator,
+    sheet_emulator: Any,
     frozen_today: date,
 ) -> None:
-    """An end date before the start is refused and the stored row survives."""
+    """An end date before the start is refused and the sheet row survives."""
     start = frozen_today - timedelta(days=5)
     await _call_service(hass, SERVICE_LOG_START, {"date": start})
     before = [dict(row) for row in coordinator.get_periods()]
+    before_rows = sheet_emulator.rows
 
     response = await _call_service(
         hass, SERVICE_LOG_END, {"date": start - timedelta(days=1)}
@@ -201,11 +200,7 @@ async def test_log_end_before_start_is_refused(
     assert response["success"] is False
     assert "message" in response
     assert coordinator.get_periods() == before
-
-    stored_store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-    stored = await stored_store.async_load()
-    assert stored is not None
-    assert stored["periods"] == before
+    assert sheet_emulator.rows == before_rows
 
 
 async def test_log_end_is_refused_without_an_open_period(
@@ -230,3 +225,18 @@ async def test_log_end_is_refused_without_an_open_period(
 
     assert response["success"] is False
     assert coordinator.get_periods() == closed
+
+
+async def test_logged_period_id_survives_a_restart(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    frozen_today: date,
+) -> None:
+    """A period id created by log_start is still there after a coordinator reload."""
+    start = frozen_today - timedelta(days=4)
+    await _call_service(hass, SERVICE_LOG_START, {"date": start})
+    logged_id = coordinator.get_periods()[-1]["period_id"]
+
+    await coordinator.async_refresh()
+
+    assert coordinator.get_periods()[-1]["period_id"] == logged_id

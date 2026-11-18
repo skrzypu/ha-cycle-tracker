@@ -1,31 +1,58 @@
 """Data update coordinator for Cycle Tracker."""
 
+import json
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, TypeVar
+from uuid import uuid4
 
+import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 
+from .config_flow import _resolve_service_account_path
 from .const import (
     CONF_CYCLE_LENGTH,
     CONF_LAST_PERIOD_START,
     CONF_PERIOD_LENGTH,
+    CONF_POLL_INTERVAL,
     CONF_PREDICTION_ALGORITHM,
+    CONF_SERVICE_ACCOUNT_FILE,
+    CONF_SPREADSHEET_ID,
+    CONF_WORKSHEET,
     DEFAULT_CYCLE_LENGTH,
     DEFAULT_PERIOD_LENGTH,
+    DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_PREDICTION_ALGORITHM,
-    DEFAULT_UPDATE_INTERVAL_HOURS,
     DOMAIN,
-    STORAGE_KEY,
-    STORAGE_VERSION,
+    MAX_POLL_INTERVAL_MINUTES,
+    MIN_POLL_INTERVAL_MINUTES,
+    STORAGE_KEY_SYNC_CACHE,
+    STORAGE_VERSION_SYNC_CACHE,
 )
-from .domain.models import Period, legacy_period_id
-from .domain.ports import Clock, PredictionConfig
+from .domain.models import Period
+from .domain.ports import Clock, PeriodRepository, PredictionConfig
 from .domain.prediction import Snapshot, build_snapshot
+from .repairs import (
+    ISSUE_SHEET_AUTH_FAILED,
+    ISSUE_SHEET_NOT_CONFIGURED,
+    ISSUE_SHEET_ROWS_INVALID,
+    ISSUE_SHEET_SCHEMA_INVALID,
+    ISSUE_SHEET_UNREACHABLE,
+    async_create_sheet_issue,
+    async_delete_sheet_issue,
+    classify_sheet_exception,
+)
+from .repository import (
+    SheetsPeriodRepository,
+    _deserialize_period,
+    _serialize_period,
+)
+from .sheets import ServiceAccountAccessTokenError, SheetsApiError, SheetsClient
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -43,26 +70,94 @@ class HomeAssistantClock:
 class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     """Adapter between Home Assistant storage and the pure prediction domain."""
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+        repo: PeriodRepository | None = None,
+        cache_store: Store[dict[str, Any]] | None = None,
+    ) -> None:
         """Initialize the coordinator.
 
         The entry is passed explicitly instead of letting the base class read
         the ContextVar: the coordinator relies on ``async_config_entry_first_refresh``,
         which only works with an entry, and a reload triggered by an options
         change runs without the setup ContextVar.
+
+        ``repo`` and ``cache_store`` are exposed for tests so the coordinator
+        can be driven with a fake repository and an in-memory Store.
         """
+        self.entry = entry
+        self._repo: PeriodRepository | None = (
+            repo if repo is not None else self._build_repository(hass, entry)
+        )
+        self._is_remote = isinstance(self._repo, SheetsPeriodRepository)
+        self._cache_store: Store[dict[str, Any]] | None = (
+            cache_store
+            if cache_store is not None
+            else (
+                Store(hass, STORAGE_VERSION_SYNC_CACHE, STORAGE_KEY_SYNC_CACHE)
+                if self._is_remote
+                else None
+            )
+        )
+        poll_minutes = self._poll_interval_minutes()
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=DOMAIN,
-            update_interval=timedelta(hours=DEFAULT_UPDATE_INTERVAL_HOURS),
+            update_interval=timedelta(minutes=poll_minutes),
         )
-        self.entry = entry
-        self.store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._data: dict[str, Any] = {}
+        self._periods: list[Period] = []
         self._clock: Clock = HomeAssistantClock()
         self._snapshot: Snapshot | None = None
+        self._consecutive_failures = 0
+        self._last_sync: datetime | None = None
+        self._last_error: str | None = None
+        self._not_configured_issue_created = False
+
+    @staticmethod
+    def _build_repository(
+        hass: HomeAssistant,
+        entry: ConfigEntry,
+    ) -> PeriodRepository | None:
+        """Build the configured repository when sheet settings are present."""
+        data = entry.data
+        spreadsheet_id = data.get(CONF_SPREADSHEET_ID)
+        worksheet = data.get(CONF_WORKSHEET)
+        service_account_file = data.get(CONF_SERVICE_ACCOUNT_FILE)
+        if spreadsheet_id and worksheet and service_account_file:
+            path = _resolve_service_account_path(hass, service_account_file)
+            if path is None:
+                _LOGGER.error(
+                    "Service account key path escapes the config directory: %s",
+                    service_account_file,
+                )
+                return None
+            with open(path, encoding="utf-8") as fp:
+                service_account_info = json.load(fp)
+            client = SheetsClient(hass, service_account_info)
+            return SheetsPeriodRepository(client, spreadsheet_id, worksheet)
+        return None
+
+    def _poll_interval_minutes(self) -> int:
+        """Return the configured poll interval clamped to the supported range."""
+        if self._repo is None:
+            return DEFAULT_POLL_INTERVAL_MINUTES
+        try:
+            value = int(
+                self.entry.options.get(
+                    CONF_POLL_INTERVAL,
+                    self.entry.data.get(
+                        CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_MINUTES
+                    ),
+                )
+            )
+        except (TypeError, ValueError):
+            value = DEFAULT_POLL_INTERVAL_MINUTES
+        return max(MIN_POLL_INTERVAL_MINUTES, min(MAX_POLL_INTERVAL_MINUTES, value))
 
     def _setting(self, key: str, default: _T) -> _T:
         """Resolve one setting: entry options, then setup data, then the default.
@@ -73,106 +168,249 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return self.entry.options.get(key, self.entry.data.get(key, default))
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from storage."""
-        try:
-            data = await self.store.async_load()
-        except Exception as err:
-            raise UpdateFailed(f"Error loading data: {err}") from err
+        """Fetch data from storage via the repository port.
 
-        self._data = self._normalize_data(data)
+        For remote repositories this is a read-through cache: a successful read
+        snapshots the data locally, while repeated failures fall back to the
+        cached snapshot and eventually mark the coordinator unavailable.
+        """
+        if self._repo is None:
+            if not self._not_configured_issue_created:
+                async_create_sheet_issue(self.hass, ISSUE_SHEET_NOT_CONFIGURED)
+                self._not_configured_issue_created = True
+            self._data = {"periods": []}
+            self._periods = []
+            self._invalidate_snapshot()
+            return self._data
+
+        if self._cache_store is None:
+            try:
+                self._periods = await self._repo.read_all()
+            except Exception as err:
+                raise UpdateFailed(f"Error loading data: {err}") from err
+
+            self._data = {
+                "periods": [_serialize_period(period) for period in self._periods]
+            }
+            self._invalidate_snapshot()
+            return self._data
+
+        try:
+            self._periods = await self._repo.read_all()
+        except Exception as err:
+            self._consecutive_failures += 1
+            self._last_error = str(err)
+            self._sync_repair_issues(err)
+            cached = await self._cache_store.async_load()
+            if not isinstance(cached, dict):
+                raise UpdateFailed(f"Error loading data: {err}") from err
+
+            self._periods = [
+                period
+                for row in cached.get("periods", [])
+                if isinstance(row, dict)
+                and (period := _deserialize_period(row)) is not None
+            ]
+            self._data = {
+                "periods": [_serialize_period(period) for period in self._periods]
+            }
+            self._invalidate_snapshot()
+            await self._persist_cache_state()
+            return self._data
+
+        self._consecutive_failures = 0
+        self._last_error = None
+        self._last_sync = dt_util.utcnow()
+        self._data = {
+            "periods": [_serialize_period(period) for period in self._periods]
+        }
         self._invalidate_snapshot()
+        self._sync_repair_issues(None)
+        await self._persist_cache_state()
         return self._data
 
-    def _get_default_data(self) -> dict[str, Any]:
-        """Get default data structure."""
-        return {"periods": []}
+    def _sync_repair_issues(self, exc: Exception | None) -> None:
+        """Create or clear sheet repair issues after a refresh attempt."""
+        if exc is None:
+            async_delete_sheet_issue(self.hass, ISSUE_SHEET_NOT_CONFIGURED)
+            async_delete_sheet_issue(self.hass, ISSUE_SHEET_AUTH_FAILED)
+            async_delete_sheet_issue(self.hass, ISSUE_SHEET_UNREACHABLE)
+            async_delete_sheet_issue(self.hass, ISSUE_SHEET_SCHEMA_INVALID)
+            if (
+                isinstance(self._repo, SheetsPeriodRepository)
+                and self._repo.last_invalid_reports
+            ):
+                async_create_sheet_issue(
+                    self.hass,
+                    ISSUE_SHEET_ROWS_INVALID,
+                    {
+                        "count": str(len(self._repo.last_invalid_reports)),
+                    },
+                )
+            else:
+                async_delete_sheet_issue(self.hass, ISSUE_SHEET_ROWS_INVALID)
+            return
 
-    def _normalize_data(self, data: object) -> dict[str, Any]:
-        """Keep the recorded periods and drop any stored settings copy."""
-        if data is None:
-            return self._get_default_data()
-        if not isinstance(data, dict):
-            _LOGGER.warning("Ignoring malformed stored data: %s", data)
-            return self._get_default_data()
+        issue_id = classify_sheet_exception(exc)
+        async_delete_sheet_issue(self.hass, ISSUE_SHEET_ROWS_INVALID)
+        if issue_id in {
+            ISSUE_SHEET_AUTH_FAILED,
+            ISSUE_SHEET_UNREACHABLE,
+            ISSUE_SHEET_SCHEMA_INVALID,
+        }:
+            async_create_sheet_issue(self.hass, issue_id)
 
-        periods = data.get("periods")
-        if periods is None:
-            return self._get_default_data()
-        if not isinstance(periods, list):
-            _LOGGER.warning("Ignoring malformed stored periods: %s", periods)
-            return self._get_default_data()
-        return {"periods": periods}
+    async def _persist_cache_state(self) -> None:
+        """Write the current cache metadata and snapshot to local storage."""
+        assert self._cache_store is not None
+        await self._cache_store.async_save(
+            {
+                "periods": self._data.get("periods", []),
+                "last_sync": self._last_sync.isoformat() if self._last_sync else None,
+                "last_error": self._last_error,
+                "consecutive_failures": self._consecutive_failures,
+            }
+        )
 
     async def async_save_data(self) -> None:
-        """Save data to storage."""
-        await self.store.async_save(self._data)
+        """Persist the in-memory periods to storage."""
+        if self._repo is None:
+            return
+        for period in self._periods:
+            await self._repo.upsert(period)
+        self._periods = await self._repo.read_all()
+        self._data = {
+            "periods": [_serialize_period(period) for period in self._periods]
+        }
 
     def get_periods(self) -> list[dict[str, Any]]:
-        """Get list of periods."""
-        return self._data.get("periods", [])
+        """Get list of serialized period rows."""
+        return list(self._data.get("periods", []))
 
-    def add_period(self, period: dict[str, Any]) -> None:
-        """Add a period."""
-        periods = self.get_periods()
-        periods.append(period)
-        periods.sort(key=lambda p: p["start_date"])
-        self._data["periods"] = periods
+    def add_period(self, row: dict[str, Any]) -> None:
+        """Add a period from a serialized row."""
+        period = _deserialize_period(row)
+        if period is None:
+            return
+        self._periods.append(period)
+        self._periods.sort(key=lambda period: period.start)
+        self._data = {
+            "periods": [_serialize_period(period) for period in self._periods]
+        }
         self._invalidate_snapshot()
 
     def get_domain_periods(self) -> list[Period]:
-        """Adapt the stored period rows to domain periods.
+        """Return the stored domain periods, already sorted by start date."""
+        return list(self._periods)
 
-        Stored rows keep the legacy ``{start_date, end_date, flow_intensity}``
-        shape; identity is derived from the start date until the logging use
-        case persists a ``period_id``.
+    async def async_log_start(self, start: date, flow: str) -> None:
+        """Log the start of a period through the repository.
+
+        If the latest stored period already starts on ``start``, its flow is
+        updated and it stays open; otherwise a new open period is created.
         """
-        periods = [
-            period
-            for row in self.get_periods()
-            if (period := self._adapt_period(row)) is not None
-        ]
-        periods.sort(key=lambda period: period.start)
-        return periods
+        if self._repo is None:
+            raise HomeAssistantError(
+                "Cycle Tracker is not configured with a Google Sheet. "
+                "Complete the sheet configuration step before logging periods."
+            )
 
-    @staticmethod
-    def _adapt_period(row: dict[str, Any]) -> Period | None:
-        """Adapt one stored row, warning instead of failing on malformed data."""
-        raw_start = row.get("start_date")
-        if not isinstance(raw_start, str):
-            _LOGGER.warning("Ignoring stored period without a start date: %s", row)
-            return None
+        now = dt_util.utcnow()
+
+        if self._periods and self._periods[-1].start == start:
+            latest = self._periods[-1]
+            period = Period(
+                id=latest.id,
+                start=latest.start,
+                end=None,
+                flow=flow,
+                notes=latest.notes,
+                updated_at=now,
+            )
+        else:
+            period = Period(
+                id=uuid4(),
+                start=start,
+                end=None,
+                flow=flow,
+                updated_at=now,
+            )
+
         try:
-            start = date.fromisoformat(raw_start)
-        except ValueError:
-            _LOGGER.warning("Ignoring stored period with an invalid start: %s", row)
-            return None
+            await self._repo.upsert(period)
+        except (ServiceAccountAccessTokenError, SheetsApiError) as err:
+            raise HomeAssistantError(
+                f"Cycle Tracker could not write to the Google Sheet: {err}"
+            ) from err
+        except aiohttp.ClientError as err:
+            raise HomeAssistantError(
+                f"Cycle Tracker could not reach the Google Sheet: {err}"
+            ) from err
+        self._upsert_in_memory(period)
+        self._invalidate_snapshot()
 
-        raw_end = row.get("end_date")
-        end: date | None = None
-        if raw_end is not None:
-            try:
-                end = date.fromisoformat(raw_end)
-            except (TypeError, ValueError):
-                _LOGGER.warning("Ignoring stored period with an invalid end: %s", row)
-                return None
-            if end < start:
-                _LOGGER.warning(
-                    "Ignoring stored period ending before its start: %s", row
-                )
-                return None
-            if end == start:
-                # The logging contract stores ``end_date == start_date`` for a
-                # period that has not ended yet, so an equal end marks it open.
-                # A genuine one-day period is indistinguishable until logging
-                # persists an explicit open flag.
-                end = None
+    async def async_log_end(self, end: date) -> dict[str, Any]:
+        """Log the end of the latest open period through the repository.
 
-        return Period(
-            id=legacy_period_id(start),
-            start=start,
+        Returns the same response shape the service layer exposes to callers.
+        """
+        if self._repo is None:
+            raise HomeAssistantError(
+                "Cycle Tracker is not configured with a Google Sheet. "
+                "Complete the sheet configuration step before logging periods."
+            )
+
+        if not self._periods:
+            return {"success": False, "message": "No period started to end"}
+
+        latest = self._periods[-1]
+        if latest.end is not None:
+            return {"success": False, "message": "Period already ended"}
+
+        end_str = end.isoformat()
+        start_str = latest.start.isoformat()
+        if end < latest.start:
+            return {
+                "success": False,
+                "message": (
+                    f"End date {end_str} precedes the period start {start_str}"
+                ),
+            }
+
+        period = Period(
+            id=latest.id,
+            start=latest.start,
             end=end,
-            flow=row.get("flow_intensity"),
+            flow=latest.flow,
+            notes=latest.notes,
+            updated_at=dt_util.utcnow(),
         )
+        try:
+            await self._repo.upsert(period)
+        except (ServiceAccountAccessTokenError, SheetsApiError) as err:
+            raise HomeAssistantError(
+                f"Cycle Tracker could not write to the Google Sheet: {err}"
+            ) from err
+        except aiohttp.ClientError as err:
+            raise HomeAssistantError(
+                f"Cycle Tracker could not reach the Google Sheet: {err}"
+            ) from err
+        self._upsert_in_memory(period)
+        self._invalidate_snapshot()
+        return {"success": True, "message": f"Period end logged for {end_str}"}
+
+    def _upsert_in_memory(self, period: Period) -> None:
+        """Replace or append a period in the cached lists."""
+        for index, existing in enumerate(self._periods):
+            if existing.id == period.id:
+                self._periods[index] = period
+                break
+        else:
+            self._periods.append(period)
+        self._periods.sort(key=lambda period: period.start)
+        self._data = {
+            "periods": [_serialize_period(period) for period in self._periods]
+        }
 
     def get_prediction_config(self) -> PredictionConfig:
         """Build the domain configuration from the config entry settings."""
@@ -197,6 +435,39 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def _invalidate_snapshot(self) -> None:
         """Drop the cached snapshot after the underlying data changed."""
         self._snapshot = None
+
+    @property
+    def available(self) -> bool:
+        """Return False when the sheet is not configured or after three failures."""
+        if self._repo is None:
+            return False
+        if self._cache_store is None:
+            return self.last_update_success
+        return self._consecutive_failures < 3
+
+    @property
+    def last_sync(self) -> datetime | None:
+        """Return the timestamp of the last successful remote read."""
+        return self._last_sync
+
+    @property
+    def last_error(self) -> str | None:
+        """Return the message from the most recent remote read failure."""
+        return self._last_error
+
+    @property
+    def consecutive_failures(self) -> int:
+        """Return the current streak of consecutive remote read failures."""
+        return self._consecutive_failures
+
+    @property
+    def sync_status(self) -> dict[str, Any]:
+        """Return a dict that sensors can expose as attributes."""
+        return {
+            "last_sync": self._last_sync.isoformat() if self._last_sync else None,
+            "last_error": self._last_error,
+            "consecutive_failures": self._consecutive_failures,
+        }
 
     @callback
     def async_set_updated_data(self, data: dict[str, Any]) -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, datetime, timedelta
+from typing import Any
 
 from homeassistant.components.calendar import CalendarEvent
 from homeassistant.const import Platform
@@ -28,7 +29,7 @@ def _summaries(events: list[CalendarEvent]) -> list[str]:
 async def test_calendar_maps_recorded_and_projected_events(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """A range returns recorded periods plus the projected prediction events."""
@@ -70,7 +71,7 @@ async def test_calendar_maps_recorded_and_projected_events(
 async def test_calendar_without_a_prediction_only_has_recorded_periods(
     hass,
     coordinator: CycleTrackerCoordinator,
-    period_row: Callable[..., dict[str, str]],
+    period_row: Callable[..., dict[str, Any]],
     frozen_today: date,
 ) -> None:
     """Recorded history stays visible when no prediction exists."""

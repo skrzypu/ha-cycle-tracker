@@ -4,9 +4,11 @@ from __future__ import annotations
 
 import dataclasses
 from datetime import date
+from uuid import UUID
 
 import pytest
-from domain.ports import Clock, PredictionConfig
+from domain.models import Period
+from domain.ports import Clock, PeriodRepository, PredictionConfig
 
 
 class FixedClock:
@@ -56,3 +58,22 @@ def test_prediction_config_is_frozen() -> None:
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         config.cycle_length = 30  # type: ignore[misc]
+
+
+class _FakeRepository:
+    """A plain-Python implementation of the repository port."""
+
+    async def read_all(self) -> list[Period]:
+        return []
+
+    async def upsert(self, period: Period) -> None:
+        return None
+
+    async def delete(self, period_id: UUID) -> None:
+        return None
+
+
+def test_a_repository_implementation_satisfies_the_protocol() -> None:
+    repo = _FakeRepository()
+
+    assert isinstance(repo, PeriodRepository)
