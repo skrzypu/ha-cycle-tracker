@@ -4,9 +4,9 @@
 
 ### Level 1: Worthless (Don't use)
 ```python
-assert result              # Always passes unless None/False
-assert x                   # Meaningless
-assert True                # Always passes
+assert result  # Always passes unless None/False
+assert x  # Meaningless
+assert True  # Always passes
 ```
 
 **Problem:** These pass even when functionality is completely broken.
@@ -34,8 +34,8 @@ assert type(user) == User
 
 ### Level 4: Property Existence (Moderate)
 ```python
-assert 'email' in user
-assert hasattr(response, 'status_code')
+assert "email" in user
+assert hasattr(response, "status_code")
 ```
 
 **Problem:** Property exists but could have wrong value.
@@ -260,6 +260,7 @@ assert actual == expected  # Convention: actual first
 # Good: Success and failure
 def test_valid_login_succeeds():
     assert login("user", "pass").success is True
+
 
 def test_invalid_login_fails():
     assert login("user", "wrong").success is False

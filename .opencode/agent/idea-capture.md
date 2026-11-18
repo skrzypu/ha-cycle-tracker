@@ -1,7 +1,7 @@
 ---
 description: "Capture an idea into the idea backlog (docs/ideas/) using the canonical template: assign the next I-### id, write the entry, record Dependencies as known or dependency unknown, update the theme index"
 mode: subagent
-model: opencode/deepseek-v4.1-flash-free#high
+model: opencode-go/deepseek-v4.1-flash#high
 permissions:
   # Denies come first: agent rules are appended after the global rules in
   # opencode.json (which allow edit on **/*.md), and the last match wins.

@@ -1,7 +1,7 @@
 ---
 description: "Read-only audit of agent/config documentation against the real code: finds stale, duplicated or fabricated claims in agent prompts, ADRs, the skills index and docs"
 mode: subagent
-model: opencode/glm-5.3-flash-free
+model: opencode-go/glm-5.3-flash
 permissions:
   - action: read
     resource: "*"

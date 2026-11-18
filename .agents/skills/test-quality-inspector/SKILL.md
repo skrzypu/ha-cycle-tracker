@@ -22,16 +22,19 @@ progressive_disclosure:
 ```python
 # test_user_registration.py
 
+
 def test_user_creation():
     """Test user creation"""
     user = create_user("test@example.com", "password123")
     assert user
+
 
 def test_login():
     """Test login"""
     user = create_user("test@example.com", "password123")
     result = login("test@example.com", "password123")
     assert result
+
 
 def test_duplicate_email():
     """Test duplicate email"""
@@ -108,6 +111,7 @@ def test_user_creation_with_valid_data_persists_to_database():
     assert retrieved_user is not None, "User should be retrievable from database"
     assert retrieved_user.id == user.id, "Retrieved user should match created user"
 
+
 def test_user_creation_with_invalid_email_format_raises_validation_error():
     """Creating a user with malformed email should raise ValidationError"""
     invalid_emails = [
@@ -125,13 +129,14 @@ def test_user_creation_with_invalid_email_format_raises_validation_error():
         assert "email" in str(exc.value).lower()
         assert "invalid" in str(exc.value).lower()
 
+
 def test_user_creation_with_weak_password_raises_validation_error():
     """Creating a user with weak password should raise ValidationError"""
     weak_passwords = [
-        "123",          # Too short
-        "password",     # No numbers
-        "12345678",     # No letters
-        "",             # Empty
+        "123",  # Too short
+        "password",  # No numbers
+        "12345678",  # No letters
+        "",  # Empty
     ]
 
     for weak_password in weak_passwords:
@@ -189,6 +194,7 @@ def registered_user():
     # Cleanup if needed
     User.delete(user.id)
 
+
 def test_login_with_valid_credentials_returns_authenticated_session(registered_user):
     """Logging in with correct email and password should:
     1. Return authentication token/session
@@ -203,7 +209,10 @@ def test_login_with_valid_credentials_returns_authenticated_session(registered_u
     assert session.user_id == registered_user.id, "Session should contain user ID"
     assert session.token is not None, "Session should have authentication token"
     assert session.expires_at > datetime.now(), "Session should have future expiry"
-    assert (session.expires_at - datetime.now()).seconds >= 3600, "Session should last at least 1 hour"
+    assert (session.expires_at - datetime.now()).seconds >= 3600, (
+        "Session should last at least 1 hour"
+    )
+
 
 def test_login_with_wrong_password_raises_authentication_error(registered_user):
     """Logging in with incorrect password should raise AuthenticationError"""
@@ -213,6 +222,7 @@ def test_login_with_wrong_password_raises_authentication_error(registered_user):
     assert "Invalid credentials" in str(exc.value)
     assert "password" in str(exc.value).lower()
 
+
 def test_login_with_nonexistent_email_raises_authentication_error():
     """Logging in with non-existent email should raise AuthenticationError"""
     with pytest.raises(AuthenticationError) as exc:
@@ -220,6 +230,7 @@ def test_login_with_nonexistent_email_raises_authentication_error():
 
     assert "Invalid credentials" in str(exc.value)
     # Note: Don't reveal if email exists (security)
+
 
 def test_login_with_locked_account_raises_account_locked_error(registered_user):
     """Logging in to locked account should raise AccountLockedError"""
@@ -229,6 +240,7 @@ def test_login_with_locked_account_raises_account_locked_error(registered_user):
         login(registered_user.email, "SecurePass123!")
 
     assert registered_user.email in str(exc.value)
+
 
 def test_login_with_empty_password_raises_validation_error(registered_user):
     """Logging in with empty password should raise ValidationError"""
@@ -299,8 +311,12 @@ def test_create_user_with_duplicate_email_raises_integrity_error():
     # Verify original user unchanged
     original_user = User.get_by_email(email)
     assert original_user.id == user1.id, "Original user should be intact"
-    assert original_user.verify_password("FirstPassword123!"), "Original password should work"
-    assert not original_user.verify_password("SecondPassword456!"), "New password should not work"
+    assert original_user.verify_password("FirstPassword123!"), (
+        "Original password should work"
+    )
+    assert not original_user.verify_password("SecondPassword456!"), (
+        "New password should not work"
+    )
 ```
 
 **Risk Level:** 🔴 CRITICAL
@@ -405,6 +421,7 @@ def test_user_creation_with_valid_data_persists_to_database():
     user = create_user("test@example.com", "password")
     assert user.email == "test@example.com"  # Will fail until create_user works
     ...
+
 
 # Then implement create_user to make it pass
 ```

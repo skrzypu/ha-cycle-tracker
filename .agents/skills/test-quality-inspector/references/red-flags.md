@@ -165,6 +165,7 @@ def test_a():
     global state
     state = "configured"
 
+
 def test_b():
     # Depends on test_a running first!
     assert state == "configured"
@@ -227,6 +228,8 @@ def test_b():
 # Only tests that things work
 def test_happy_path_1(): ...
 def test_happy_path_2(): ...
+
+
 # No sad path tests!
 ```
 

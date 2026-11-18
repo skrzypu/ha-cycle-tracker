@@ -1,7 +1,7 @@
 ---
 description: "Meta-coaching for orchestrator: delegation patterns, parallel agent dispatch, subagent-driven development, branch finishing"
 mode: subagent
-model: opencode/deepseek-v4.1-flash-free#max
+model: opencode-go/deepseek-v4.1-flash#max
 permissions:
   - action: read
     resource: "*"

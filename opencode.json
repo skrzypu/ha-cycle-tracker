@@ -51,7 +51,7 @@
     "servers": {
       "homeassistant": {
         "type": "remote",
-        "url": "http://<HA_HOST>:8123/api/mcp",
+        "url": "http://{env:HA_MCP_HOST}:8123/api/mcp",
         "oauth": false,
         "headers": {
           "Authorization": "Bearer {file:~/.secrets/ha_mcp_token}"
