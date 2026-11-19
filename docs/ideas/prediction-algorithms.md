@@ -1,6 +1,6 @@
 # Idea: Prediction Algorithms
 
-- **Status:** decided — recorded in [BDR-0004](../bdr/0004-prediction-is-a-window-not-a-date.md)
+- **Status:** decided — recorded in [BDR-0004](../bdr/0004-prediction-is-a-window-not-a-date.md) on 2026-11-10
 - **Problem:** the current prediction is two formulas applied to the last six
   cycle lengths, with an arbitrary ovulation offset and a hard-coded confidence.
   Nothing records why those choices were made, and the domain model is supposed
@@ -12,7 +12,18 @@
 - **Constraints / conflicts:** ADR-0005 (pure domain, testable without Home
   Assistant); the existing `cycle-tracking` spec already promises arithmetic mean
   and weighted moving average; the current sensor hard-codes
-  `prediction_confidence: 0.5`.
+  `prediction_confidence: 0.5` (as of the decision — confidence is now computed;
+  see "Current behavior" below).
+- **Value:** one documented set of prediction and statistics contracts that the
+  domain model and the product can rely on instead of re-deriving each choice.
+- **Dependencies:**
+  - ADR-0005 (pure domain, testable without Home Assistant) — known
+  - BDR-0004 (the decision that records these answers) — known
+- **Open questions:** the product gaps listed under "Still open (product)" —
+  the all-history statistic (question 9) and the fertile-window wording
+  (question 12).
+- **Decision:** recorded in [BDR-0004](../bdr/0004-prediction-is-a-window-not-a-date.md)
+  on 2026-11-10; see "Decided so far" below.
 
 ## Decided so far
 
@@ -62,8 +73,8 @@
 
 ## Current behavior (facts, not decisions)
 
-- `prediction.py` has two strategies: `arithmetic_mean` and
-  `weighted_moving_average` (weights 1..n, newest highest).
+- `domain/strategies.py` has three strategies: `arithmetic_mean`,
+  `weighted_moving_average` (weights 1..n, newest highest) and `median`.
 - The coordinator uses the last 6 cycle lengths when at least 2 exist, otherwise
   falls back to the configured cycle length.
 - A cycle length is the number of days between two consecutive period starts.
@@ -73,7 +84,9 @@
   within `cycle_length // 2 ± 1`; follicular before that; luteal after.
 - Statistics use all recorded cycles; period length uses `end - start + 1` and
   fails for an open period.
-- `prediction_confidence` is the constant `0.5` on the statistics sensor.
+- Confidence is computed (`confidence_score` and `confidence_band` in
+  `domain/statistics.py`, called from `domain/prediction.py`) — there is no
+  constant `0.5` on the sensor.
 - Flow intensity is one of `spotting`, `light`, `medium`, `heavy`, defaulting to
   `medium` in the service schema.
 - There is no migration concern: the integration has not shipped usable data.

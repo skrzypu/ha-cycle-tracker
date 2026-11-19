@@ -60,7 +60,9 @@ def _dashboard_view(hass: HomeAssistant) -> dict[str, Any]:
     if not devices:
         return DASHBOARD_VIEW
 
-    devices.sort(key=lambda device: ((device.name_by_user or device.name or ""), device.id))
+    devices.sort(
+        key=lambda device: ((device.name_by_user or device.name or ""), device.id)
+    )
     multi = len(devices) > 1
     cards: list[dict[str, Any]] = []
     for device in devices:
@@ -84,6 +86,7 @@ def _dashboard_view(hass: HomeAssistant) -> dict[str, Any]:
             }
         ]
     }
+
 
 _CREATE_COMMAND = "lovelace/dashboards/create"
 _DELETE_COMMAND = "lovelace/dashboards/delete"

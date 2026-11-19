@@ -1,17 +1,23 @@
 # Parked OpenSpec Changes
 
-Changes that were drafted before their turn. They are kept as design reference,
-not as active work. `openspec list` does not see them, and nothing here should be
-implemented without an explicit decision to revive it.
+Historical reference only. Both changes that were once drafted here were later
+revived, implemented and archived: `google-sheets-source-of-truth` (archived
+2026-11-17) and `add-lovelace-card` (archived 2026-11-19). The draft files remain
+here as design reference. `openspec list` does not see them, and nothing here is
+active work.
 
-| Change | Parked on | Why | Revive when |
+| Change | Parked on | Status | Why / revival |
 |---|---|---|---|
-| `google-sheets-source-of-truth` | 2026-11-09 | The domain data model is not settled; the sheet schema depends on it. ADR-0004 is `proposed`. | The data model and repository port are decided. |
-| `add-lovelace-card` | 2026-11-09 | The card is roadmap Phase 1 but depends on stable entities and a data model; UI work comes after the domain. | The data model is stable and the entity set is final. |
+| `google-sheets-source-of-truth` | 2026-11-09 | superseded — archived 2026-11-17 | Was parked because the domain model was not settled; revived, implemented and archived. Historical reference only. |
+| `add-lovelace-card` | 2026-11-09 | superseded — archived 2026-11-19 | Was parked pending stable entities and a data model; revived, implemented and archived. Historical reference only. |
 
-## How to revive
+## Historical revival notes (no longer applicable)
 
-1. Move the directory back to `openspec/changes/<name>/`.
+Both drafts have already been revived and archived. The steps below are kept to
+document how that was done:
+
+1. Move the draft directory out of `docs/ideas/parked/` back under
+   `openspec/changes/`.
 2. Re-read the specs against the current `openspec/specs/` and the accepted ADRs;
    update or rewrite them.
 3. Run `openspec validate <name> --strict` and `openspec status --change <name>`.

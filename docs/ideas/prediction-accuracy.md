@@ -11,9 +11,10 @@ feedback instead of guessing.
 - **Problem:** BDR-0004 promises a window with an uncertainty band and a
   confidence, but nothing tells the user — or us — whether those windows were
   right. Prediction is recomputed from current history on every refresh
-  (`coordinator.py:415-420`), so the prediction that was shown before a cycle
-  started is not kept; after the fact it cannot be compared with the actual
-  start without replaying the algorithm.
+  (`coordinator.py:422-433`, the `snapshot` property calling `build_snapshot`),
+  so the prediction that was shown before a cycle started is not kept; after the
+  fact it cannot be compared with the actual start without replaying the
+  algorithm.
 - **Idea:** keep a record of each prediction made — predicted date, uncertainty
   window, confidence, computed-at timestamp and the history it used — and
   compare it with the next actual start. Report a hit rate inside the window,
@@ -36,13 +37,13 @@ feedback instead of guessing.
   - BDR-0004 (windows, confidence and outlier rules being scored) — known
   - ADR-0001 (local-only storage, retention) — known
   - I-007 (backdating and closing past periods invalidate past scores) — known
-  - I-013 (window size is the main tuning knob this would inform) — dependency
-    unknown
-  - I-017 (diagnostics surface could show the underlying records) — dependency
-    unknown
+  - I-013 (window size is the main tuning knob this would inform) — known
+  - I-017 (diagnostics surface; whether it should show the underlying records
+    is not decided) — dependency unknown
 - **Open questions:** store snapshots or replay on demand? Window hit rate or
   point error as the headline metric? How many past predictions to keep? Do
   history edits reset the score? Is this an attribute on the statistics sensor
-  or a separate sensor? How should an "unknown" prediction be scored — counted
-  as a miss or excluded?
+  or a separate sensor? Should I-017 (diagnostics) surface the stored prediction
+  records? How should an "unknown" prediction be scored — counted as a miss or
+  excluded?
 - **Decision:** —

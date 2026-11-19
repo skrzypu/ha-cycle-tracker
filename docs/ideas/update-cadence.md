@@ -49,22 +49,24 @@ force a recomputation on demand instead of waiting for the next tick.
   instead of up to 288 at the 5-minute default, which is the point — but a
   missed tick is then visible for a whole day. There is no `button` platform in
   the integration yet, so a button is a new platform, not an addition to an
-  existing one.
+  existing one. The archived `sheet-sync` spec now sets a configurable refresh
+  interval with a five-minute default, so a daily option must be reconciled with
+  it.
 - **Dependencies:**
   - ADR-0011 (the config entry owns settings) — known
   - ADR-0005 (pure domain, adapters at the edge) — known
   - ADR-0006 (explicit domain model contract) — known
-  - ADR-0004 (Google Sheets as source of truth; its polling interval is still an
-    open follow-up at `docs/adr/0004-google-sheets-source-of-truth.md:105`, so
-    whether a daily tick is compatible with the Sheets adapter is unconfirmed)
-    — dependency unknown
-  - parked `google-sheets-source-of-truth` (a sync adapter would add its own
-    polling pressure, and the parked change cannot be checked for cadence
-    requirements) — dependency unknown
+  - ADR-0004 (Google Sheets as source of truth) and the archived `sheet-sync`
+    spec (`openspec/changes/archive/2026-11-17-google-sheets-source-of-truth/specs/sheet-sync/spec.md`,
+    configurable interval, five-minute default) — known
+  - `google-sheets-source-of-truth` (archived 2026-11-17; its sync adapter adds
+    its own polling pressure) — known
 - **Open questions:** fixed daily cadence or configurable (for example hours
   1–24, or "daily at HH:MM")? Align to local midnight or keep a rolling
-  interval? Should a stale snapshot — not refreshed for more than 24 hours — be
-  flagged as an attribute? Should the midnight refresh be a coordinator timer or
-  something the calendar/platform layer drives? Service plus button, or only the
-  service? Should the button be disabled by default or marked diagnostic?
+  interval? How does a daily tick fit the sheet-sync spec's configurable
+  five-minute interval? Should a stale snapshot — not refreshed for more than 24
+  hours — be flagged as an attribute? Should the midnight refresh be a
+  coordinator timer or something the calendar/platform layer drives? Service
+  plus button, or only the service? Should the button be disabled by default or
+  marked diagnostic?
 - **Decision:** —

@@ -43,7 +43,7 @@ automation, which makes the integration impractical for daily use.
 ## Impact
 
 - **New files**: `custom_components/cycle_tracker/www/cycle-tracker-card.js`,
-  `openspec/changes/add-lovelace-card/specs/lovelace-card/spec.md`, a delta spec
+  `openspec/changes/archive/2026-11-19-add-lovelace-card/specs/lovelace-card/spec.md`, a delta spec
   for `hacs-distribution`.
 - **Modified files**: `custom_components/cycle_tracker/__init__.py` (static path
   and Lovelace resource registration), `custom_components/cycle_tracker/manifest.json`

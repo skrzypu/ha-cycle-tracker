@@ -51,9 +51,9 @@ only then promoted.
 
 | File | Theme | Status |
 |---|---|---|
-| [prediction-algorithms.md](prediction-algorithms.md) | Prediction inputs, outliers, confidence, ovulation, phases | decided — BDR-0004 |
-| [domain-model.md](domain-model.md) | Domain entities, invariants, identity, ports | decided — ADR-0006 |
-| [card-and-sync.md](card-and-sync.md) | Lovelace card design, external data copy (Sheets, Drive), several people per home | idea |
+| [prediction-algorithms.md](prediction-algorithms.md) | Prediction inputs, outliers, confidence, ovulation, phases | decided — BDR-0004 (2026-11-10) |
+| [domain-model.md](domain-model.md) | Domain entities, invariants, identity, ports | decided — ADR-0006 (2026-11-10) |
+| [card-and-sync.md](card-and-sync.md) | Lovelace card design, external data copy (Sheets, Drive), several people per home | mixed — decided (I-002/003/006), exploring (I-001), parked (I-004/005), idea (I-008/011) |
 | [period-logging.md](period-logging.md) | Backdating a period start, closing a specific past period, dedup | idea |
 | [safe-days.md](safe-days.md) | Safe days for unprotected sex: today's status, upcoming ranges, confidence | idea |
 | [internationalization.md](internationalization.md) | Card and config flow in more languages, translation loading (i18n) | idea |
@@ -63,21 +63,25 @@ only then promoted.
 | [symptoms-and-observations.md](symptoms-and-observations.md) | Symptoms, basal body temperature and LH tests alongside periods | idea |
 | [diagnostics.md](diagnostics.md) | Last refresh, excluded cycles, gaps and data quality | idea |
 | [prediction-accuracy.md](prediction-accuracy.md) | Scoring past predictions against actual period starts | idea |
-| [parked/](parked/README.md) | Drafted OpenSpec changes that are not active work | parked |
+| [parked/](parked/README.md) | Drafted OpenSpec changes kept as historical reference (both now archived) | reference — both drafts archived |
 
 ## Order of work
 
 1. **Prediction algorithms** — what the product promises. **Decided** in BDR-0004
-   and **implemented** in the `add-cycle-prediction` change.
+   (2026-11-10) and **implemented** in the `add-cycle-prediction` change.
 2. **Domain data model** — entities, invariants, identity, `Clock`, repository
-   port. **Decided** in ADR-0006 and **implemented** in
+   port. **Decided** in ADR-0006 (2026-11-10) and **implemented** in
    `custom_components/cycle_tracker/domain/`.
 3. **Migrate the coordinator** — the prediction seam is done: the coordinator is
    now an adapter around `build_snapshot`. The remaining use cases (`log_start`,
    `log_end`, persistence) still live in the coordinator.
-4. **Persistence port and adapters** — local cache first, then the proposed
-   Google Sheets adapter (ADR-0004 stays `proposed` until the model is settled).
-5. **Lovelace card** — depends on stable entities; change is parked.
+4. **Persistence port and adapters** — local cache first, then the Google Sheets
+   adapter, which shipped via the `google-sheets-source-of-truth` change
+   (archived 2026-11-17); ADR-0004 records the source-of-truth decision.
+5. **Lovelace card** — shipped via the `add-lovelace-card` change
+   (archived 2026-11-19), with device binding and one bound card per device in
+   the bundled dashboard. Remaining work is entity naming (I-011) and card
+   i18n (I-010).
 6. **Development tooling** — independent of the product order; the active
    `dev-mcp-tooling` change is unaffected.
 

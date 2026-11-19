@@ -28,16 +28,17 @@ temperature and LH tests — and whether they ever feed prediction.
   change: ADR-0006 defines the current model contract, and a new entity plus its
   invariants and persistence port are needed. ADR-0001 keeps data local — this
   would be the most sensitive data the integration holds, so no cloud path
-  should be introduced by default. If the sheet is ever the source of truth,
-  ADR-0004's column layout would need new columns and the parked
-  `google-sheets-source-of-truth` change would have to carry them. BDR-0004's
-  prediction contract stays untouched until a separate decision is made.
+  should be introduced by default. ADR-0004 makes the sheet the source of truth,
+  so its column layout would need new columns; the original sheet adapter is
+  archived (`google-sheets-source-of-truth`, 2026-11-17) and extending it would
+  be a new change. BDR-0004's prediction contract stays untouched until a
+  separate decision is made.
 - **Dependencies:**
   - ADR-0006 (explicit domain model contract) — known
   - ADR-0001 (local-only storage and processing) — known
-  - ADR-0004 (sheet columns and source-of-truth scope) — dependency unknown
-  - parked `google-sheets-source-of-truth` (where sheet columns would land) —
-    dependency unknown
+  - ADR-0004 (sheet columns and source-of-truth scope) — known
+  - archived `google-sheets-source-of-truth` (2026-11-17; where sheet columns
+    would land) — known
   - I-015 (chart of cycle and period lengths; a future place to plot the new
     series) — dependency unknown
   - I-005 (flow intensity in the card) — dependency unknown

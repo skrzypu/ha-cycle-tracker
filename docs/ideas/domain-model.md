@@ -1,6 +1,6 @@
 # Idea: Domain Data Model
 
-- **Status:** decided — recorded in [ADR-0006](../adr/0006-domain-model-contract.md)
+- **Status:** decided — recorded in [ADR-0006](../adr/0006-domain-model-contract.md) on 2026-11-10
 - **Problem:** the domain currently exists only as a list of dictionaries inside
   `coordinator.py`. Fields, invariants, and identity are implicit, so every
   future change — a repository port, Google Sheets, the card, or new metrics —
@@ -12,8 +12,17 @@
   domain that can be tested without Home Assistant; no schema churn later.
 - **Constraints / conflicts:** ADR-0005 (SOLID, Clean Architecture, dependency
   rule); ADR-0001 still says local-only until ADR-0004 is accepted; the proposed
-  sheet schema in `parked/google-sheets-source-of-truth` must map onto the model,
+  sheet schema in the archived `google-sheets-source-of-truth` change
+  (`openspec/changes/archive/2026-11-17-google-sheets-source-of-truth/`) must map
+  onto the model,
   not the other way round.
+- **Dependencies:**
+  - ADR-0005 (SOLID, Clean Architecture, dependency rule) — known
+  - `prediction-algorithms.md` (source of the model answers) — known
+  - ADR-0004 (Google Sheets source of truth; the sheet schema maps onto the model) — known
+- **Open questions:** none blocking the model; see the "Open questions" section below.
+- **Decision:** recorded in [ADR-0006](../adr/0006-domain-model-contract.md)
+  on 2026-11-10; see "Decided so far" below.
 
 ## Decided so far
 
@@ -90,6 +99,9 @@ wording.
 
 ## Next step
 
-Answer the remaining warning question, then write the model down as a domain
-artifact under the domain layer. If the answers change module boundaries or
-persistence, record an ADR first; only after that touch specs or code.
+The model is implemented under `custom_components/cycle_tracker/domain/`
+(`models.py`, `validation.py`, `prediction.py`, `strategies.py`, `statistics.py`,
+`windows.py`, `ports.py` and others), so this artifact is complete. Remaining
+product gaps live in `prediction-algorithms.md`: the all-history statistic and
+the fertile-window wording. The Google Sheets source-of-truth adapter is
+archived as well (`google-sheets-source-of-truth`, 2026-11-17).

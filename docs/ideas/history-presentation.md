@@ -25,20 +25,20 @@ and charts of period and cycle lengths over time.
 - **Value:** the newest cycle is visible as soon as the sheet opens; checking or
   correcting the last entry no longer means scrolling through the whole history.
 - **Constraints / conflicts:** ADR-0004 (Google Sheets as source of truth) is
-  still `proposed`, and the sheet feature lives in the parked change
-  `docs/ideas/parked/google-sheets-source-of-truth/` — so this is a requirement
-  on that change, not on shipped code. The Sheets `append` call writes at the end
+  still `proposed`, while the sheet feature shipped in the archived change
+  `google-sheets-source-of-truth` (2026-11-17) — so insert-at-top is a follow-up
+  to that shipped adapter. The Sheets `append` call writes at the end
   of the table; insert-at-top needs a different API call and shifts existing row
   indices, which can break formulas, ranges or another writer. The header row
   must stay first. Sorting here is presentation: stored order and the domain
   history stay chronological (ADR-0006). Card and entity ordering are out of
   scope for this entry; I-015 covers the chart.
 - **Dependencies:**
-  - parked `google-sheets-source-of-truth` (the change this belongs to) — known
+  - archived `google-sheets-source-of-truth` (2026-11-17; the change this extends) — known
   - I-008 (invalid sheet rows tab may rely on row numbering) — known
   - ADR-0006 (domain history is chronological) — known
-  - ADR-0004 (sheet layout is not part of the accepted decision while it stays
-    `proposed`) — dependency unknown
+  - ADR-0004 (sheet layout is outside its accepted decision while it stays
+    `proposed`) — known
 - **Open questions:** insert-at-top or raw append plus a sorted view? Does the
   adapter own the layout at all, or is it the user's sheet? How do existing
   sheets migrate — do existing rows move on first write? Do formulas and ranges
@@ -64,14 +64,15 @@ and charts of period and cycle lengths over time.
   long-term statistics, exposing cycle length and period length as
   statistics-capable sensors so Home Assistant's statistics card and history
   graph render them without a custom chart; (b) a chart in the Lovelace card
-  (that change is parked). The native-statistics path is the lower-effort one
+  (that change shipped — archived 2026-11-19 — so this would extend it). The
+  native-statistics path is the lower-effort one
   and needs no new frontend dependency, but it draws a step series rather than
   one point per cycle.
 - **Value:** users can see whether their cycles are regular and whether a
   prediction is plausible; the chart supports the "window, not a date" promise
   of BDR-0004 instead of hiding it behind a single number.
-- **Constraints / conflicts:** the card change is parked, and BDR-0002 says the
-  card ships with the integration, so a card chart inherits the parked work.
+- **Constraints / conflicts:** the card change shipped (archived 2026-11-19),
+  consistent with BDR-0002, so a card chart would extend shipped work.
   Home Assistant collects long-term statistics only for numeric sensors with a
   valid `state_class` (`measurement`, `total`, `total_increasing`), and it
   aggregates hourly min/max/mean from the sensor's current state — so a
@@ -86,7 +87,7 @@ and charts of period and cycle lengths over time.
 - **Dependencies:**
   - BDR-0004 (window, uncertainty and outlier rules) — known
   - BDR-0002 (the card ships with the integration) — known
-  - parked `add-lovelace-card` — known
+  - `add-lovelace-card` (archived 2026-11-19) — known
   - I-013 (configurable window size; whether the chart shows the prediction
     window or all history, and therefore whether it needs the same setting, is
     not decided) — dependency unknown
