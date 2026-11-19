@@ -130,3 +130,43 @@ product questions around it.
 - **Open questions:** a Lovelace tab or a card section? Can the row be fixed in
   Home Assistant directly? Does it also show rows dropped for extra columns?
 - **Decision:** —
+
+### I-011: Several people in one home — entity naming, card binding, dashboards
+
+- **Status:** idea
+- **Problem:** the integration already supports several config entries (one
+  Google Sheet per person), which is the natural model for a household with more
+  than one menstruating person. The UI surface does not follow: on the first live
+  installation the entities were created with an area prefix
+  (`sensor.prywatne_cycle_tracker_cycle_day`), so the card's conventional IDs
+  (`sensor.cycle_tracker_cycle_day`) matched nothing and every value rendered as
+  "brak danych". The card now falls back to a same-domain suffix match, but with
+  two entries that fallback is ambiguous, and the bundled dashboard seeds a
+  single card with no entity mapping.
+- **Idea:** decide entity naming and card binding together: (a) make the
+  integration own its entity IDs (for example `has_entity_name` with a
+  per-entry device name), so the ID does not depend on how a device was created
+  or renamed; (b) let a card bind to an entry or device (an `entry`/`device`
+  option resolved through the entity registry) instead of guessing by suffix;
+  (c) make the bundled dashboard multi-person aware: one view per entry, or one
+  dashboard per entry created from the entry name.
+- **Value:** a household can track two or more people without YAML surgery per
+  card, and the first installation stops depending on an accidental area prefix.
+- **Constraints / conflicts:** the card runs in the frontend and cannot read
+  config entries today, so a binding option needs either a companion entity that
+  exposes the entry ID or a registry-based lookup in the card; renaming existing
+  entities would break user automations, so any naming scheme change needs a
+  migration story; the area prefix observed in the wild is not produced by the
+  integration's code, so the scheme must tolerate legacy IDs.
+- **Dependencies:**
+  - `add-lovelace-card` (bundled dashboard, card entity resolution) — known
+  - I-010 (i18n: `has_entity_name`, `translation_key`, entity names) — known,
+    overlapping: both touch entity naming
+  - a decision record for entity naming and multi-entry UI — missing
+  - whether Home Assistant added the prefix (device/area creation) or the
+    entities were renamed — dependency unknown
+- **Open questions:** should the integration adopt `has_entity_name` and a
+  per-entry device name, and how do existing IDs migrate? Should the card accept
+  an `entry_id`/`device_id` option, or should each person get their own
+  dashboard? Does the bundled dashboard stay single-person by design?
+- **Decision:** —

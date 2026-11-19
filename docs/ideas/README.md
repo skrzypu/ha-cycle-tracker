@@ -53,7 +53,7 @@ only then promoted.
 |---|---|---|
 | [prediction-algorithms.md](prediction-algorithms.md) | Prediction inputs, outliers, confidence, ovulation, phases | decided — BDR-0004 |
 | [domain-model.md](domain-model.md) | Domain entities, invariants, identity, ports | decided — ADR-0006 |
-| [card-and-sync.md](card-and-sync.md) | Lovelace card design and external data copy (Sheets, Drive) | idea |
+| [card-and-sync.md](card-and-sync.md) | Lovelace card design, external data copy (Sheets, Drive), several people per home | idea |
 | [period-logging.md](period-logging.md) | Backdating a period start, closing a specific past period, dedup | idea |
 | [safe-days.md](safe-days.md) | Safe days for unprotected sex: today's status, upcoming ranges, confidence | idea |
 | [internationalization.md](internationalization.md) | Card and config flow in more languages, translation loading (i18n) | idea |
