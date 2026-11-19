@@ -13,6 +13,8 @@ from datetime import date, datetime
 from enum import StrEnum
 from uuid import UUID
 
+from .windows import CycleWindows
+
 #: Namespace used to derive ids for period rows that predate stored ids.
 PERIOD_ID_NAMESPACE = uuid.NAMESPACE_URL
 
@@ -98,9 +100,14 @@ class Prediction:
     next_period: date
     cycle_length_days: int
     uncertainty: tuple[date, date]
+    #: Ovulation windows of the cycle that is running now; they may lie in the
+    #: past, which is why entities and the card read ``next_ovulation`` instead.
     ovulation: tuple[date, date]
     ovulation_center: date
     fertile: tuple[date, date]
+    #: Windows of the first ovulation that has not passed yet: the current
+    #: cycle's when it is still ahead, otherwise the following cycle's.
+    next_ovulation: CycleWindows
     confidence: float
     confidence_band: ConfidenceBand
     is_late: bool

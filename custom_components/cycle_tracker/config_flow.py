@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 from pathlib import Path
 from typing import Any, TypeVar
 
@@ -47,6 +49,8 @@ from .repository import (
 from .sheets import ServiceAccountAccessTokenError, SheetsApiError, SheetsClient
 
 _T = TypeVar("_T")
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class _SheetValidationResult:
@@ -97,32 +101,37 @@ def _resolve_service_account_path(hass: Any, path_str: str) -> Path | None:
 
 
 def _sheet_api_error_key(exc: SheetsApiError) -> str:
-    """Map a Sheets API error to one of the four sheet step error keys."""
+    """Map a Sheets API error to one of the five sheet step error keys."""
     body: dict[str, Any] = exc.args[0] if exc.args else {}
     status = body.get("error", {}).get("code", 0)
     if status in (401, 403):
         return "invalid_auth"
     if status == 404:
         return "sheet_not_found"
+    if status == 400:
+        return "invalid_range"
     return "cannot_connect"
+
+
+_SHEET_ID_RE = re.compile(r"[A-Za-z0-9_-]{20,}")
+_SHEET_URL_RE = re.compile(r"/spreadsheets/d/([A-Za-z0-9_-]+)")
+_SHEET_QUERY_ID_RE = re.compile(r"[?&]id=([A-Za-z0-9_-]+)")
+
+
+def _normalize_spreadsheet_id(raw: str) -> str | None:
+    """Return a bare spreadsheet ID from an ID or a pasted Google Sheets URL."""
+    value = str(raw).strip()
+    match = _SHEET_URL_RE.search(value) or _SHEET_QUERY_ID_RE.search(value)
+    if match is not None:
+        value = match.group(1)
+    if not _SHEET_ID_RE.fullmatch(value):
+        return None
+    return value
 
 
 def _clamp_poll_interval(value: int) -> int:
     """Clamp the poll interval to the supported 1–60 minute range."""
     return max(MIN_POLL_INTERVAL_MINUTES, min(MAX_POLL_INTERVAL_MINUTES, int(value)))
-
-
-def _account_hint(client_email: str | None) -> str:
-    """Describe the service-account sharing step for the sheet form."""
-    if client_email:
-        return (
-            "Share the spreadsheet with the service account as an Editor: "
-            f"{client_email}"
-        )
-    return (
-        "The service account must be shared as an Editor of the spreadsheet; "
-        "its address appears here once the key file is validated."
-    )
 
 
 async def _async_validate_sheet(
@@ -132,15 +141,31 @@ async def _async_validate_sheet(
     service_account_file: str,
 ) -> _SheetValidationResult:
     """Check the key file, auth, sheet presence and header schema."""
+    spreadsheet_id = str(spreadsheet_id).strip()
+    worksheet = str(worksheet).strip()
+    service_account_file = str(service_account_file).strip()
+
     path = _resolve_service_account_path(hass, service_account_file)
     if path is None:
+        _LOGGER.warning(
+            "Cycle Tracker: service account key path %r does not resolve inside"
+            " %s; rejecting the sheet configuration",
+            service_account_file,
+            hass.config.config_dir,
+        )
         return _SheetValidationResult("cannot_connect")
 
     try:
         service_account_info = await hass.async_add_executor_job(
             _load_service_account_key, path
         )
-    except (FileNotFoundError, PermissionError, OSError, json.JSONDecodeError):
+    except (FileNotFoundError, PermissionError, OSError, json.JSONDecodeError) as exc:
+        _LOGGER.warning(
+            "Cycle Tracker: failed to load service account key %s: %s: %s",
+            path,
+            type(exc).__name__,
+            exc,
+        )
         return _SheetValidationResult("cannot_connect")
 
     client_email = service_account_info.get("client_email")
@@ -148,15 +173,43 @@ async def _async_validate_sheet(
     try:
         client = SheetsClient(hass, service_account_info)
         rows = await client.read_rows(spreadsheet_id, worksheet)
-    except ServiceAccountAccessTokenError:
+    except ServiceAccountAccessTokenError as exc:
+        body: dict[str, Any] = exc.args[0] if exc.args else {}
+        _LOGGER.warning(
+            "Cycle Tracker: service account token request failed: error=%s"
+            " error_description=%s",
+            body.get("error"),
+            body.get("error_description"),
+        )
         return _SheetValidationResult("invalid_auth", client_email=client_email)
     except SheetsApiError as exc:
+        body = exc.args[0] if exc.args else {}
+        error_body = body.get("error", {})
+        _LOGGER.warning(
+            "Cycle Tracker: Sheets API returned HTTP %s for spreadsheet %s"
+            " worksheet %s: %s",
+            error_body.get("code"),
+            spreadsheet_id,
+            worksheet,
+            error_body.get("message"),
+        )
         return _SheetValidationResult(
             _sheet_api_error_key(exc), client_email=client_email
         )
-    except aiohttp.ClientError:
+    except aiohttp.ClientError as exc:
+        _LOGGER.warning(
+            "Cycle Tracker: network error reading spreadsheet %s worksheet %s: %r",
+            spreadsheet_id,
+            worksheet,
+            exc,
+        )
         return _SheetValidationResult("cannot_connect", client_email=client_email)
     except TimeoutError:
+        _LOGGER.warning(
+            "Cycle Tracker: timed out reading spreadsheet %s worksheet %s",
+            spreadsheet_id,
+            worksheet,
+        )
         return _SheetValidationResult("cannot_connect", client_email=client_email)
 
     if not rows:
@@ -165,7 +218,15 @@ async def _async_validate_sheet(
     headers = rows[0]
     try:
         _header_indices(headers)
-    except SheetSchemaError:
+    except SheetSchemaError as exc:
+        _LOGGER.warning(
+            "Cycle Tracker: worksheet header is missing required columns."
+            " spreadsheet=%s worksheet=%s headers=%s error=%s",
+            spreadsheet_id,
+            worksheet,
+            headers,
+            exc,
+        )
         return _SheetValidationResult("invalid_schema", client_email=client_email)
 
     return _SheetValidationResult(
@@ -353,40 +414,52 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
         """Handle the Google Sheets source-of-truth step."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            spreadsheet_id = user_input[CONF_SPREADSHEET_ID]
-            worksheet = user_input[CONF_WORKSHEET]
-            service_account_file = user_input[CONF_SERVICE_ACCOUNT_FILE]
-            poll_interval = _clamp_poll_interval(user_input[CONF_POLL_INTERVAL])
-
-            result = await _async_validate_sheet(
-                self.hass,
-                spreadsheet_id,
-                worksheet,
-                service_account_file,
-            )
-            if result.client_email:
-                self._sheet_account_email = result.client_email
-            if result.error:
-                errors["base"] = result.error
+            raw_spreadsheet_id = str(user_input[CONF_SPREADSHEET_ID])
+            spreadsheet_id = _normalize_spreadsheet_id(raw_spreadsheet_id)
+            worksheet = str(user_input[CONF_WORKSHEET]).strip()
+            service_account_file = str(user_input[CONF_SERVICE_ACCOUNT_FILE]).strip()
+            if spreadsheet_id is None:
+                _LOGGER.warning(
+                    "Cycle Tracker: rejected spreadsheet ID input %r; paste only"
+                    " the long ID from the sheet URL",
+                    raw_spreadsheet_id,
+                )
+                errors["base"] = "invalid_spreadsheet_id"
             else:
-                self._sheet_input = {
-                    CONF_SPREADSHEET_ID: spreadsheet_id,
-                    CONF_WORKSHEET: worksheet,
-                    CONF_SERVICE_ACCOUNT_FILE: service_account_file,
-                    CONF_POLL_INTERVAL: poll_interval,
-                }
-                if result.data_rows == 0:
-                    cached = await _async_local_cached_periods(self.hass)
-                    if cached:
-                        return await self.async_step_import_offer()
-                return self._create_sheet_entry()
+                poll_interval = _clamp_poll_interval(user_input[CONF_POLL_INTERVAL])
+
+                result = await _async_validate_sheet(
+                    self.hass,
+                    spreadsheet_id,
+                    worksheet,
+                    service_account_file,
+                )
+                if result.client_email:
+                    self._sheet_account_email = result.client_email
+                if result.error:
+                    errors["base"] = result.error
+                else:
+                    self._sheet_input = {
+                        CONF_SPREADSHEET_ID: spreadsheet_id,
+                        CONF_WORKSHEET: worksheet,
+                        CONF_SERVICE_ACCOUNT_FILE: service_account_file,
+                        CONF_POLL_INTERVAL: poll_interval,
+                    }
+                    if result.data_rows == 0:
+                        cached = await _async_local_cached_periods(self.hass)
+                        if cached:
+                            return await self.async_step_import_offer()
+                    return self._create_sheet_entry()
 
         return self.async_show_form(
             step_id="sheet",
             data_schema=_sheet_schema(self.hass),
             errors=errors,
             description_placeholders={
-                "account_hint": _account_hint(self._sheet_account_email),
+                "client_email": self._sheet_account_email or "—",
+                # Compatibility placeholder: browsers may still render a cached
+                # older translation that interpolates {account_hint}.
+                "account_hint": self._sheet_account_email or "—",
             },
         )
 
@@ -460,27 +533,39 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
         errors: dict[str, str] = {}
         entry = self.config_entry
         if user_input is not None:
-            sheet_data = {
-                CONF_SPREADSHEET_ID: user_input[CONF_SPREADSHEET_ID],
-                CONF_WORKSHEET: user_input[CONF_WORKSHEET],
-                CONF_SERVICE_ACCOUNT_FILE: user_input[CONF_SERVICE_ACCOUNT_FILE],
-                CONF_POLL_INTERVAL: _clamp_poll_interval(
-                    user_input[CONF_POLL_INTERVAL]
-                ),
-            }
-            result = await _async_validate_sheet(
-                self.hass,
-                sheet_data[CONF_SPREADSHEET_ID],
-                sheet_data[CONF_WORKSHEET],
-                sheet_data[CONF_SERVICE_ACCOUNT_FILE],
-            )
-            if result.error:
-                errors["base"] = result.error
-            else:
-                return self.async_create_entry(
-                    title="",
-                    data={**user_input, **sheet_data},
+            raw_spreadsheet_id = str(user_input[CONF_SPREADSHEET_ID])
+            spreadsheet_id = _normalize_spreadsheet_id(raw_spreadsheet_id)
+            worksheet = str(user_input[CONF_WORKSHEET]).strip()
+            service_account_file = str(user_input[CONF_SERVICE_ACCOUNT_FILE]).strip()
+            if spreadsheet_id is None:
+                _LOGGER.warning(
+                    "Cycle Tracker: rejected spreadsheet ID input %r; paste only"
+                    " the long ID from the sheet URL",
+                    raw_spreadsheet_id,
                 )
+                errors["base"] = "invalid_spreadsheet_id"
+            else:
+                sheet_data: dict[str, Any] = {
+                    CONF_SPREADSHEET_ID: spreadsheet_id,
+                    CONF_WORKSHEET: worksheet,
+                    CONF_SERVICE_ACCOUNT_FILE: service_account_file,
+                    CONF_POLL_INTERVAL: _clamp_poll_interval(
+                        user_input[CONF_POLL_INTERVAL]
+                    ),
+                }
+                result = await _async_validate_sheet(
+                    self.hass,
+                    sheet_data[CONF_SPREADSHEET_ID],
+                    sheet_data[CONF_WORKSHEET],
+                    sheet_data[CONF_SERVICE_ACCOUNT_FILE],
+                )
+                if result.error:
+                    errors["base"] = result.error
+                else:
+                    return self.async_create_entry(
+                        title="",
+                        data={**user_input, **sheet_data},
+                    )
 
         defaults = {
             CONF_CYCLE_LENGTH: _setting(entry, CONF_CYCLE_LENGTH, DEFAULT_CYCLE_LENGTH),

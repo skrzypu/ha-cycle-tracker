@@ -95,7 +95,7 @@ def sheet_settings(service_account_key: str) -> dict[str, Any]:
     )
 
     return {
-        CONF_SPREADSHEET_ID: "test-sheet-id",
+        CONF_SPREADSHEET_ID: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_",
         CONF_WORKSHEET: "Sheet1",
         CONF_SERVICE_ACCOUNT_FILE: service_account_key,
         CONF_POLL_INTERVAL: 5,

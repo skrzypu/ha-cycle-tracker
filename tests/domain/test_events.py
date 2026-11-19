@@ -7,6 +7,7 @@ from datetime import date, timedelta
 from domain.events import CycleEvent, EventKind, project_events
 from domain.models import ConfidenceBand, Prediction
 from domain.ports import PredictionConfig
+from domain.windows import cycle_windows
 
 CONFIG = PredictionConfig(period_length=5, cycle_length=28)
 
@@ -30,6 +31,11 @@ def _prediction(
         ),
         ovulation_center=ovulation_center,
         fertile=(ovulation_center - timedelta(days=5), ovulation_center),
+        next_ovulation=cycle_windows(
+            next_period - timedelta(days=cycle_length_days),
+            cycle_length_days,
+            CONFIG.period_length,
+        ),
         confidence=0.5,
         confidence_band=ConfidenceBand.MEDIUM,
         is_late=is_late,

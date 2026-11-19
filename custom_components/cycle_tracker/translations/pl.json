@@ -1,0 +1,119 @@
+{
+  "title": "Śledzenie cyklu",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ustawienia cyklu",
+        "description": "Podaj podstawowe dane o swoim cyklu. Możesz je później zmienić w opcjach integracji.",
+        "data": {
+          "cycle_length": "Średnia długość cyklu (dni)",
+          "period_length": "Średnia długość okresu (dni)",
+          "last_period_start": "Pierwszy dzień ostatniego okresu"
+        }
+      },
+      "preferences": {
+        "title": "Preferencje przewidywania",
+        "data": {
+          "prediction_algorithm": "Algorytm przewidywania",
+          "notification_offset_days": "Ile dni przed okresem wysłać powiadomienie"
+        }
+      },
+      "notifications": {
+        "title": "Powiadomienia",
+        "data": {
+          "enable_notifications": "Włącz powiadomienia o okresie i owulacji",
+          "notification_time": "Godzina wysyłania powiadomień"
+        }
+      },
+      "sheet": {
+        "title": "Arkusz Google",
+        "description": "Połącz arkusz Google, który będzie źródłem prawdy dla historii Twojego cyklu. Wklej identyfikator arkusza z jego adresu URL, podaj nazwę arkusza (zakładki) i wskaż ścieżkę do pliku klucza konta usługi w katalogu konfiguracji Home Assistant. Udostępnij arkusz kontu usługi jako edytora: {client_email}",
+        "data": {
+          "spreadsheet_id": "Identyfikator arkusza (długi identyfikator z adresu URL arkusza)",
+          "worksheet": "Nazwa arkusza (zakładki). Nowy arkusz Google nazywa pierwszą zakładkę Sheet1 — lub Arkusz1 w polskim koncie.",
+          "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)",
+          "poll_interval": "Jak często sprawdzać arkusz pod kątem zmian (minuty)"
+        }
+      },
+      "import_offer": {
+        "title": "Import zapisanych okresów",
+        "description": "Znaleziono lokalną historię cyklu. Zaimportować ją teraz do pustego arkusza? Arkusz, w którym są już wiersze, zawsze ma pierwszeństwo, więc import musi się odbyć, zanim w arkuszu pojawią się jakiekolwiek wiersze.",
+        "data": {
+          "import_cached_periods": "Importuj zapisane okresy do arkusza"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nie udało się uwierzytelnić w Google. Sprawdź plik klucza konta usługi i upewnij się, że konto ma uprawnienia edytora arkusza.",
+      "sheet_not_found": "Nie znaleziono arkusza lub skoroszytu. Sprawdź identyfikatory i udostępnianie.",
+      "invalid_range": "Nie znaleziono arkusza (zakładki) o tej nazwie lub identyfikator arkusza jest nieprawidłowy. Sprawdź dokładnie nazwę zakładki — w polskim arkuszu Google pierwsza zakładka nazywa się Arkusz1 — i wklej tylko długi identyfikator z adresu URL, nie cały adres.",
+      "invalid_schema": "W nagłówku arkusza brakuje wymaganych kolumn.",
+      "cannot_connect": "Nie udało się połączyć z Arkuszami Google. Sprawdź ścieżkę do pliku klucza i połączenie sieciowe.",
+      "invalid_spreadsheet_id": "Identyfikator arkusza jest nieprawidłowy. Wklej tylko długi identyfikator z adresu URL arkusza — fragment między /d/ i /edit — a nie cały adres."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opcje śledzenia cyklu",
+        "data": {
+          "cycle_length": "Średnia długość cyklu (dni)",
+          "period_length": "Średnia długość okresu (dni)",
+          "prediction_algorithm": "Algorytm przewidywania",
+          "notification_offset_days": "Ile dni przed okresem wysłać powiadomienie",
+          "enable_notifications": "Włącz powiadomienia o okresie i owulacji",
+          "notification_time": "Godzina wysyłania powiadomień",
+          "spreadsheet_id": "Identyfikator arkusza (długi identyfikator z adresu URL arkusza)",
+          "worksheet": "Nazwa arkusza (np. Sheet1)",
+          "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)",
+          "poll_interval": "Jak często sprawdzać arkusz pod kątem zmian (minuty)"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nie udało się uwierzytelnić w Google. Sprawdź plik klucza konta usługi i upewnij się, że konto ma uprawnienia edytora arkusza.",
+      "sheet_not_found": "Nie znaleziono arkusza lub skoroszytu. Sprawdź identyfikatory i udostępnianie.",
+      "invalid_schema": "W nagłówku arkusza brakuje wymaganych kolumn.",
+      "cannot_connect": "Nie udało się połączyć z Arkuszami Google. Sprawdź ścieżkę do pliku klucza i połączenie sieciowe."
+    }
+  },
+  "selector": {
+    "prediction_algorithm": {
+      "options": {
+        "arithmetic_mean": "Średnia arytmetyczna",
+        "weighted_moving_average": "Ważona średnia krocząca",
+        "median": "Mediana"
+      }
+    },
+    "flow_intensity": {
+      "options": {
+        "spotting": "Plamienie",
+        "light": "Lekki",
+        "medium": "Średni",
+        "heavy": "Obfity"
+      }
+    }
+  },
+  "issues": {
+    "sheet_not_configured": {
+      "title": "Arkusz Google nie jest skonfigurowany",
+      "description": "Cycle Tracker potrzebuje arkusza Google do przechowywania historii okresów. Otwórz opcje integracji i podaj identyfikator arkusza, nazwę arkusza oraz ścieżkę do pliku klucza konta usługi."
+    },
+    "sheet_auth_failed": {
+      "title": "Uwierzytelnianie w Arkuszach Google nie powiodło się",
+      "description": "Cycle Tracker nie mógł uwierzytelnić się w Arkuszach Google. Sprawdź plik klucza konta usługi i upewnij się, że konto usługi ma uprawnienia edytora arkusza."
+    },
+    "sheet_unreachable": {
+      "title": "Arkusz Google jest niedostępny",
+      "description": "Cycle Tracker nie mógł połączyć się z Arkuszami Google. Sprawdź połączenie sieciowe oraz czy arkusz i skoroszyt istnieją."
+    },
+    "sheet_schema_invalid": {
+      "title": "Nieprawidłowy nagłówek arkusza Google",
+      "description": "W arkuszu brakuje co najmniej jednej wymaganej kolumny. Zaktualizuj wiersz nagłówka, aby integracja mogła synchronizować dane."
+    },
+    "sheet_rows_invalid": {
+      "title": "Arkusz Google zawiera nieprawidłowe wiersze",
+      "description": "Cycle Tracker pominął {count} nieprawidłowych wierszy w arkuszu. Sprawdź arkusz pod kątem brakujących dat rozpoczęcia lub wierszy, które kończą się przed rozpoczęciem."
+    }
+  }
+}

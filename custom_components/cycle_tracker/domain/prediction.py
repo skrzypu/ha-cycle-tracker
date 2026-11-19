@@ -84,6 +84,13 @@ def predict_from_history(
         target=config.history_window,
     )
     is_late = today > windows.next_period
+    next_ovulation = windows
+    for _ in range(24):
+        if next_ovulation.ovulation_center >= today:
+            break
+        next_ovulation = cycle_windows(
+            next_ovulation.next_period, predicted_length, config.period_length
+        )
 
     return Prediction(
         next_period=windows.next_period,
@@ -95,12 +102,13 @@ def predict_from_history(
         ovulation=windows.ovulation,
         ovulation_center=windows.ovulation_center,
         fertile=windows.fertile,
+        next_ovulation=next_ovulation,
         confidence=score,
         confidence_band=confidence_band(score),
         is_late=is_late,
         days_late=(today - windows.next_period).days if is_late else 0,
         days_until_period=max(0, (windows.next_period - today).days),
-        days_until_ovulation=max(0, (windows.ovulation_center - today).days),
+        days_until_ovulation=max(0, (next_ovulation.ovulation_center - today).days),
         warnings=history.warnings,
         usable_cycle_count=len(lengths),
     )
@@ -123,6 +131,14 @@ def cycle_day(periods: Sequence[Period], today: date) -> int | None:
     if not starts:
         return None
     return (today - max(starts)).days + 1
+
+
+def cycle_start(periods: Sequence[Period], today: date) -> date | None:
+    """The most recent recorded period start on or before ``today``."""
+    starts = [period.start for period in periods if period.start <= today]
+    if not starts:
+        return None
+    return max(starts)
 
 
 def phase_at(
@@ -182,11 +198,13 @@ class Snapshot:
     """Everything the entities show, derived once for one reference date."""
 
     reference_date: date
+    cycle_start: date | None
     prediction: Prediction | None
     cycle_day: int | None
     phase: CyclePhase | None
     statistics: CycleStatistics
     events: tuple[CycleEvent, ...]
+    period_open: bool
 
 
 def build_snapshot(
@@ -202,9 +220,11 @@ def build_snapshot(
     )
     return Snapshot(
         reference_date=today,
+        cycle_start=cycle_start(periods, today),
         prediction=prediction,
         cycle_day=cycle_day(periods, today),
         phase=phase_at(periods, prediction, config, today),
         statistics=statistics(periods, history, config),
         events=project_events(prediction, config) if prediction else (),
+        period_open=any(period.end is None for period in periods),
     )

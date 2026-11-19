@@ -262,7 +262,7 @@ def test_days_until_ovulation_is_measured_from_the_reference_date(
     assert prediction.days_until_ovulation == 4
 
 
-def test_days_until_ovulation_is_zero_once_the_window_has_passed(
+def test_days_until_ovulation_skips_to_the_next_cycle_once_this_one_has_passed(
     make_periods: Callable[..., list[Period]],
 ) -> None:
     periods = make_periods([28, 28], first=date(2026, 9, 8))
@@ -270,7 +270,11 @@ def test_days_until_ovulation_is_zero_once_the_window_has_passed(
     prediction = _predict(periods, today=date(2026, 11, 20))
 
     assert prediction is not None
-    assert prediction.days_until_ovulation == 0
+    # The running cycle's ovulation (2026-11-17) is behind us, so the countdown
+    # points at the following cycle instead of clamping to zero.
+    assert prediction.ovulation_center == date(2026, 11, 17)
+    assert prediction.next_ovulation.ovulation_center == date(2026, 12, 15)
+    assert prediction.days_until_ovulation == 25
 
 
 # --- confidence (5.4) ---------------------------------------------------------

@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Cycle settings",
-        "description": "Configure your cycle basics.",
+        "description": "Enter the basics of your cycle. You can change these later in the integration options.",
         "data": {
           "cycle_length": "Average cycle length (days)",
           "period_length": "Average period length (days)",
@@ -15,29 +15,29 @@
         "title": "Prediction preferences",
         "data": {
           "prediction_algorithm": "Prediction algorithm",
-          "notification_offset_days": "Days before period to notify"
+          "notification_offset_days": "Days before the period to send a notification"
         }
       },
       "notifications": {
         "title": "Notifications",
         "data": {
-          "enable_notifications": "Enable notifications",
-          "notification_time": "Notification time"
+          "enable_notifications": "Enable period and ovulation notifications",
+          "notification_time": "Time of day to send notifications"
         }
       },
       "sheet": {
         "title": "Google Sheet",
-        "description": "Connect a Google Sheet that will be the source of truth for your cycle history. {account_hint}",
+        "description": "Connect a Google Sheet that will hold your cycle history. Paste the spreadsheet ID from the sheet's URL, enter the worksheet (tab) name, and give the path to your service-account key file as it sits inside your Home Assistant configuration directory. Share the spreadsheet with the service account as an Editor: {client_email}",
         "data": {
-          "spreadsheet_id": "Spreadsheet ID",
-          "worksheet": "Worksheet name",
-          "service_account_file": "Service account key file path",
-          "poll_interval": "Poll interval (minutes)"
+          "spreadsheet_id": "Spreadsheet ID (the long identifier in the sheet's URL)",
+          "worksheet": "Worksheet name (tab). A new Google Sheet names its first tab Sheet1 — or Arkusz1 in a Polish-language account.",
+          "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)",
+          "poll_interval": "How often to check the sheet for changes (minutes)"
         }
       },
       "import_offer": {
         "title": "Import cached periods",
-        "description": "Local cycle history was found. Import it into the empty sheet now? A populated sheet always wins, so import must happen before any rows are added to the sheet.",
+        "description": "Local cycle history was found. Import it into the empty sheet now? A sheet that already has rows always wins, so the import must happen before any rows are added.",
         "data": {
           "import_cached_periods": "Import cached periods into the sheet"
         }
@@ -46,8 +46,10 @@
     "error": {
       "invalid_auth": "Could not authenticate with Google. Check the service-account key file and that the account is shared as an Editor of the spreadsheet.",
       "sheet_not_found": "Spreadsheet or worksheet not found. Check the IDs and sharing.",
+      "invalid_range": "The worksheet (tab) name was not found, or the spreadsheet ID is malformed. Check the tab name exactly — a Polish Google Sheet names its first tab Arkusz1 — and paste only the long ID from the sheet URL, not the whole URL.",
       "invalid_schema": "The worksheet header is missing required columns.",
-      "cannot_connect": "Could not connect to Google Sheets. Check the key file path and network."
+      "cannot_connect": "Could not connect to Google Sheets. Check the key file path and network.",
+      "invalid_spreadsheet_id": "The spreadsheet ID is not valid. Paste only the long ID from the sheet URL — the part between /d/ and /edit — not the whole address."
     }
   },
   "options": {
@@ -58,13 +60,13 @@
           "cycle_length": "Average cycle length (days)",
           "period_length": "Average period length (days)",
           "prediction_algorithm": "Prediction algorithm",
-          "notification_offset_days": "Days before period to notify",
-          "enable_notifications": "Enable notifications",
-          "notification_time": "Notification time",
-          "spreadsheet_id": "Spreadsheet ID",
-          "worksheet": "Worksheet name",
-          "service_account_file": "Service account key file path",
-          "poll_interval": "Poll interval (minutes)"
+          "notification_offset_days": "Days before the period to send a notification",
+          "enable_notifications": "Enable period and ovulation notifications",
+          "notification_time": "Time of day to send notifications",
+          "spreadsheet_id": "Spreadsheet ID (the long identifier in the sheet's URL)",
+          "worksheet": "Worksheet name (e.g. Sheet1)",
+          "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)",
+          "poll_interval": "How often to check the sheet for changes (minutes)"
         }
       }
     },

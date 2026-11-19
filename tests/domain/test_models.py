@@ -17,6 +17,7 @@ from domain.models import (
     WarningKind,
     legacy_period_id,
 )
+from domain.windows import CycleWindows
 
 
 def test_period_only_requires_an_id_and_a_start_date() -> None:
@@ -124,6 +125,14 @@ def test_prediction_carries_dates_windows_and_state() -> None:
         ovulation=(date(2026, 11, 15), date(2026, 11, 19)),
         ovulation_center=date(2026, 11, 17),
         fertile=(date(2026, 11, 12), date(2026, 11, 17)),
+        next_ovulation=CycleWindows(
+            period_start=date(2026, 11, 3),
+            period_end=date(2026, 11, 7),
+            next_period=date(2026, 12, 1),
+            ovulation_center=date(2026, 11, 17),
+            ovulation=(date(2026, 11, 15), date(2026, 11, 19)),
+            fertile=(date(2026, 11, 12), date(2026, 11, 17)),
+        ),
         confidence=0.33,
         confidence_band=ConfidenceBand.LOW,
         is_late=False,

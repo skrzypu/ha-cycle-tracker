@@ -5,7 +5,7 @@ from homeassistant.const import Platform
 DOMAIN = "cycle_tracker"
 
 # Platforms
-PLATFORMS = [Platform.SENSOR, Platform.CALENDAR]
+PLATFORMS = [Platform.SENSOR, Platform.CALENDAR, Platform.BINARY_SENSOR]
 
 # Configuration keys
 CONF_CYCLE_LENGTH = "cycle_length"

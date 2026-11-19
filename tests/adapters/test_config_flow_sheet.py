@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from datetime import date
 from pathlib import Path
 from typing import Any
 
+import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from homeassistant.core import HomeAssistant
@@ -30,7 +32,8 @@ from custom_components.cycle_tracker.const import (
 )
 from custom_components.cycle_tracker.sheets import TOKEN_URI
 
-SPREADSHEET_ID = "sheet1"
+SPREADSHEET_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_"
+URL_PASTED_ID = "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_01234"
 WORKSHEET = "Sheet1"
 SHEETS_RE = re.compile(
     r"https://sheets\.googleapis\.com/v4/spreadsheets/[^/]+/values/[^/]+"
@@ -205,6 +208,89 @@ async def test_sheet_step_rejects_key_path_outside_config_dir(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "sheet"
     assert result["errors"] == {"base": "cannot_connect"}
+
+
+async def test_sheet_step_accepts_pasted_spreadsheet_url(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+) -> None:
+    """Pasting the whole sheet URL stores the bare ID and queries the API with it."""
+    result = await _drive_to_sheet_step(hass, aioclient_mock)
+    aioclient_mock.post(TOKEN_URI, json=_token_response())
+    aioclient_mock.get(
+        SHEETS_RE,
+        json={
+            "values": [
+                [
+                    "period_id",
+                    "start_date",
+                    "end_date",
+                    "flow_intensity",
+                    "notes",
+                    "updated_at",
+                ]
+            ]
+        },
+    )
+    key_path = _write_key_file(hass)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_SPREADSHEET_ID: (
+                f"https://docs.google.com/spreadsheets/d/{URL_PASTED_ID}/edit#gid=0"
+            ),
+            CONF_WORKSHEET: WORKSHEET,
+            CONF_SERVICE_ACCOUNT_FILE: key_path,
+            CONF_POLL_INTERVAL: 10,
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    entry: MockConfigEntry = result["result"]
+    assert entry.data[CONF_SPREADSHEET_ID] == URL_PASTED_ID
+
+    sheet_calls = [
+        str(call[1]) for call in aioclient_mock.mock_calls if "/values/" in str(call[1])
+    ]
+    assert sheet_calls
+    for url in sheet_calls:
+        assert f"/spreadsheets/{URL_PASTED_ID}/values/{WORKSHEET}" in url
+
+
+async def test_sheet_step_rejects_malformed_spreadsheet_id(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A pasted value that is not a spreadsheet ID fails before any API call."""
+    result = await _drive_to_sheet_step(hass, aioclient_mock)
+    key_path = _write_key_file(hass)
+
+    with caplog.at_level(
+        logging.WARNING, logger="custom_components.cycle_tracker.config_flow"
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_SPREADSHEET_ID: "not a sheet id",
+                CONF_WORKSHEET: WORKSHEET,
+                CONF_SERVICE_ACCOUNT_FILE: key_path,
+                CONF_POLL_INTERVAL: 5,
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "sheet"
+    assert result["errors"] == {"base": "invalid_spreadsheet_id"}
+    assert not any(
+        "sheets.googleapis.com" in str(call[1]) for call in aioclient_mock.mock_calls
+    )
+    assert any(
+        "not a sheet id" in record.getMessage()
+        for record in caplog.records
+        if record.levelno is logging.WARNING
+    )
 
 
 async def test_sheet_step_offers_import_for_empty_sheet_with_local_cache(
@@ -393,3 +479,142 @@ async def test_sheet_step_maps_auth_error_to_invalid_auth(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "sheet"
     assert result["errors"] == {"base": "invalid_auth"}
+    assert result["description_placeholders"] == {
+        "client_email": "test@example.iam.gserviceaccount.com",
+        "account_hint": "test@example.iam.gserviceaccount.com",
+    }
+
+
+async def test_sheet_step_maps_http_400_to_invalid_range(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+) -> None:
+    """A 400 from the Sheets API surfaces as invalid_range, not cannot_connect."""
+    result = await _drive_to_sheet_step(hass, aioclient_mock)
+    aioclient_mock.post(TOKEN_URI, json=_token_response())
+    aioclient_mock.get(
+        SHEETS_RE,
+        status=400,
+        json={
+            "error": {
+                "code": 400,
+                "message": "Unable to parse range: Arkusz1!A1:F1",
+                "status": "INVALID_ARGUMENT",
+            }
+        },
+    )
+    key_path = _write_key_file(hass)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_SPREADSHEET_ID: SPREADSHEET_ID,
+            CONF_WORKSHEET: "Arkusz1",
+            CONF_SERVICE_ACCOUNT_FILE: key_path,
+            CONF_POLL_INTERVAL: 5,
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "sheet"
+    assert result["errors"] == {"base": "invalid_range"}
+    assert result["description_placeholders"] == {
+        "client_email": "test@example.iam.gserviceaccount.com",
+        "account_hint": "test@example.iam.gserviceaccount.com",
+    }
+
+
+async def test_sheet_step_strips_whitespace_from_submitted_inputs(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+) -> None:
+    """Pasted ids, worksheet names and paths are validated and stored stripped."""
+    result = await _drive_to_sheet_step(hass, aioclient_mock)
+    aioclient_mock.post(TOKEN_URI, json=_token_response())
+    aioclient_mock.get(
+        SHEETS_RE,
+        json={
+            "values": [
+                [
+                    "period_id",
+                    "start_date",
+                    "end_date",
+                    "flow_intensity",
+                    "notes",
+                    "updated_at",
+                ]
+            ]
+        },
+    )
+    key_path = _write_key_file(hass)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_SPREADSHEET_ID: f"  {SPREADSHEET_ID}\n",
+            CONF_WORKSHEET: f"\t{WORKSHEET}  ",
+            CONF_SERVICE_ACCOUNT_FILE: f" {key_path} ",
+            CONF_POLL_INTERVAL: 10,
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    entry: MockConfigEntry = result["result"]
+    assert entry.data[CONF_SPREADSHEET_ID] == SPREADSHEET_ID
+    assert entry.data[CONF_WORKSHEET] == WORKSHEET
+    assert entry.data[CONF_SERVICE_ACCOUNT_FILE] == key_path
+
+    sheet_calls = [
+        str(call[1]) for call in aioclient_mock.mock_calls if "/values/" in str(call[1])
+    ]
+    assert sheet_calls
+    for url in sheet_calls:
+        assert f"/spreadsheets/{SPREADSHEET_ID}/values/{WORKSHEET}" in url
+
+
+async def test_sheet_api_400_is_logged_with_status_and_google_message(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A 400 response logs a WARNING with the status and Google's message."""
+    result = await _drive_to_sheet_step(hass, aioclient_mock)
+    aioclient_mock.post(TOKEN_URI, json=_token_response())
+    aioclient_mock.get(
+        SHEETS_RE,
+        status=400,
+        json={
+            "error": {
+                "code": 400,
+                "message": "Unable to parse range: Arkusz1!A1:F1",
+                "status": "INVALID_ARGUMENT",
+            }
+        },
+    )
+    key_path = _write_key_file(hass)
+
+    with caplog.at_level(
+        logging.WARNING, logger="custom_components.cycle_tracker.config_flow"
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_SPREADSHEET_ID: SPREADSHEET_ID,
+                CONF_WORKSHEET: "Arkusz1",
+                CONF_SERVICE_ACCOUNT_FILE: key_path,
+                CONF_POLL_INTERVAL: 5,
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_range"}
+
+    warnings = [
+        record
+        for record in caplog.records
+        if record.levelno is logging.WARNING and "Sheets API" in record.getMessage()
+    ]
+    assert len(warnings) == 1
+    message = warnings[0].getMessage()
+    assert "400" in message
+    assert "Unable to parse range" in message

@@ -117,12 +117,14 @@ All entities are grouped under a single **Cycle Tracker** device.
 | Entity ID | Friendly name | Description |
 | --- | --- | --- |
 | `sensor.cycle_tracker_cycle_day` | Cycle Tracker Cycle Day | Elapsed day in the current cycle, which keeps counting past the configured cycle length instead of wrapping |
+| `sensor.cycle_tracker_cycle_start_date` | Cycle Tracker Cycle Start Date | Start date of the current cycle (the most recent recorded period start); `unknown` before any period is recorded |
 | `sensor.cycle_tracker_cycle_phase` | Cycle Tracker Cycle Phase | `menstrual`, `follicular`, `ovulatory` or `luteal`, derived from the ovulation window; `unknown` without a prediction |
 | `sensor.cycle_tracker_next_period_date` | Cycle Tracker Next Period Date | Predicted start date of the next period; `unknown` below two usable completed cycles; attributes: `uncertainty_start`, `uncertainty_end`, `predicted_cycle_length`, `usable_cycle_count` |
 | `sensor.cycle_tracker_next_ovulation_date` | Cycle Tracker Next Ovulation Date | Predicted ovulation center; attributes: `ovulation_window_start`, `ovulation_window_end`, `fertile_window_start`, `fertile_window_end` |
 | `sensor.cycle_tracker_days_until_period` | Cycle Tracker Days Until Period | Days remaining until the predicted next period, `0` when the period is due or late; attributes: `is_late`, `days_late` |
 | `sensor.cycle_tracker_days_until_ovulation` | Cycle Tracker Days Until Ovulation | Days remaining until the predicted ovulation center |
 | `sensor.cycle_tracker_statistics` | Cycle Tracker Statistics | Number of recorded periods; attributes: `average_cycle_length`, `average_period_length`, `cycle_length_std_dev`, `period_length_std_dev`, `shortest_cycle`, `longest_cycle`, `total_cycles_tracked`, `prediction_confidence`, `confidence_band`, `usable_cycle_count`, `warnings` |
+| `binary_sensor.cycle_tracker_period_open` | Cycle Tracker Period Open | `on` while a recorded period has no end date, `off` otherwise |
 | `calendar.menstrual_cycle` | Menstrual Cycle | Recorded periods plus the projected predicted period, ovulation window and fertile window |
 
 Prediction-dependent sensors return an unknown state until at least two usable completed cycles have been recorded. Entity IDs can be renamed from the entity settings, so they are not guaranteed to stay exactly as listed above.
@@ -138,6 +140,124 @@ Both services resolve the configuration entry from the entity or device they are
 | `cycle_tracker.log_end` | `date` | yes | date (`YYYY-MM-DD`) | End date of the period |
 
 Both services return a response object with `success` (boolean) and `message` (string). Logging a period end when no period has been started, or ending a period that was already ended, returns `success: false`.
+
+## Lovelace card
+
+The integration ships a Lovelace card for logging period start and end from a
+dashboard and for showing the current cycle state at a glance. The card is
+bundled inside the integration directory and served by Home Assistant, so
+installing or updating the HACS **Integration** entry is enough — there is no
+separate Dashboard repository, package, or resource to add.
+
+Add the card through **Add card → Manual** with this YAML:
+
+```yaml
+type: custom:cycle-tracker-card
+title: Cycle Tracker   # optional, defaults to "Cycle Tracker"
+show_actions: true     # optional, defaults to true
+entities:              # optional per-entity overrides
+  cycle_day: sensor.cycle_tracker_cycle_day
+  cycle_start: sensor.cycle_tracker_cycle_start_date
+  cycle_phase: sensor.cycle_tracker_cycle_phase
+  next_period: sensor.cycle_tracker_next_period_date
+  next_ovulation: sensor.cycle_tracker_next_ovulation_date
+  days_until_period: sensor.cycle_tracker_days_until_period
+  days_until_ovulation: sensor.cycle_tracker_days_until_ovulation
+  statistics: sensor.cycle_tracker_statistics
+  period_open: binary_sensor.cycle_tracker_period_open
+```
+
+The card has a visual editor: pick the person from the **Urządzenie** list
+(each Cycle Tracker device appears as `name — area` when it belongs to an area)
+and the card binds to that device, resolving its entities itself. No entity ID
+has to be typed. With exactly one Cycle Tracker device the card binds to it
+automatically; with several devices and none chosen it shows a Polish message
+instead of guessing. An `entities` override still wins for the keys it covers.
+Its labels and messages are Polish-language in this release.
+
+Binding is by `device_id`, so renaming an entity does not break the card: it
+matches the entity's conventional ID suffix first and its stable internal
+`unique_id` suffix otherwise. The old suffix fallback over `hass.states` remains
+only for installations where the device registry is unavailable.
+
+### Bundled dashboard
+
+On setup the integration also creates a dashboard titled **Cykl** at
+`/cykl-miesieczny`, shown in the sidebar, with one card per Cycle Tracker device
+(one person = one entry = one device), ordered by device name. A single-person
+install gets one card titled `Cykl`; a multi-person install titles each card with
+its device name. Each card carries its own `device_id`. It is created only when
+no dashboard or panel already uses that path, and it is never written to again
+afterwards — your edits to it are preserved, and a person added later is added as
+a card by hand. If you delete the dashboard, it stays deleted (it is not
+re-created on later restarts). Removing the integration deletes the dashboard
+only while it is still unmodified.
+
+The card leads with three equally prominent values: **Dzień cyklu** (with the
+cycle start date as a caption beneath it), **Do okresu** (days until the next
+period), and **Pewność prognozy** (prediction confidence as a whole percentage,
+with its band `niska` / `średnia` / `wysoka` for low / medium / high). Below them
+are the phase, the predicted dates, the action buttons, and a collapsible
+**Statystyki** disclosure with the average cycle length, average period length,
+and tracked cycle count.
+
+### Card options
+
+| Key | Required | Description |
+| --- | --- | --- |
+| `type` | yes | Always `custom:cycle-tracker-card`. |
+| `title` | no | Card heading; defaults to `Cycle Tracker`. |
+| `show_actions` | no | Show the start and end action buttons; defaults to `true`. |
+| `device_id` | no | Binds the card to one Cycle Tracker device; set by the visual editor, not typed by hand. |
+| `entities` | no | Mapping that overrides the entity ID for any of the nine keys below; omitted keys keep their default. |
+
+| `entities` key | Default entity ID |
+| --- | --- |
+| `cycle_day` | `sensor.cycle_tracker_cycle_day` |
+| `cycle_start` | `sensor.cycle_tracker_cycle_start_date` |
+| `cycle_phase` | `sensor.cycle_tracker_cycle_phase` |
+| `next_period` | `sensor.cycle_tracker_next_period_date` |
+| `next_ovulation` | `sensor.cycle_tracker_next_ovulation_date` |
+| `days_until_period` | `sensor.cycle_tracker_days_until_period` |
+| `days_until_ovulation` | `sensor.cycle_tracker_days_until_ovulation` |
+| `statistics` | `sensor.cycle_tracker_statistics` |
+| `period_open` | `binary_sensor.cycle_tracker_period_open` |
+
+### Actions
+
+The two buttons call the existing services with the browser's local date, so
+they log the day you see on your own clock:
+
+- **Rozpocznij okres** calls `cycle_tracker.log_start`. It is disabled while a
+  period is already open (`period_open` is `on`), because a second start would
+  add an overlapping row.
+- **Zakończ okres** calls `cycle_tracker.log_end`. It is disabled while no
+  period is open (`period_open` is `off`), because the service would reject the
+  call. Activating it once asks for confirmation; the service is called only on
+  a second activation within five seconds.
+
+Both buttons are disabled while a service call is in flight. A failed call is
+shown as a message in the card's status region and the last rendered values stay
+visible. The button gating comes from `binary_sensor.cycle_tracker_period_open`;
+the services keep their own validation, so stale state cannot corrupt the sheet.
+
+### YAML-mode resource
+
+In storage mode (the Home Assistant default) the integration registers the card
+resource automatically. When Lovelace runs in YAML mode, the integration does
+not modify your dashboard configuration, so add the resource manually:
+
+```yaml
+lovelace:
+  mode: yaml
+  resources:
+    - url: /cycle_tracker/cycle-tracker-card.js?v=0.2.4
+      type: module
+```
+
+The `v=` value must match the integration version (the `version` field in
+`custom_components/cycle_tracker/manifest.json`); bump it when you upgrade so
+the browser does not serve a cached copy of the card.
 
 ## Example
 

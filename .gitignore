@@ -69,5 +69,10 @@ build/
 .env
 *.env
 
+# Google Sheets service accounts and exports
+*.csv
+service_account*.json
+service-account*.json
+
 # Home Assistant
 custom_components/__pycache__/

@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from homeassistant.core import HomeAssistant
 
-from custom_components.cycle_tracker.sheets import SheetsClient
+from custom_components.cycle_tracker.sheets import SheetsApiError, SheetsClient
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 SPREADSHEET_ID = "sheet1"
@@ -98,3 +98,25 @@ async def test_read_rows_returns_header_and_data_rows(
         ["start_date", "flow_intensity"],
         ["2026-01-01", "medium"],
     ]
+
+
+async def test_non_json_error_body_raises_sheets_api_error(
+    hass: HomeAssistant,
+    aioclient_mock,
+) -> None:
+    """A text/html 400 surfaces as SheetsApiError instead of a ContentTypeError."""
+    aioclient_mock.post(TOKEN_URL, json=_token_response())
+    aioclient_mock.get(
+        SHEETS_RE,
+        status=400,
+        text="<html><body>Bad Request</body></html>",
+        headers={"Content-Type": "text/html; charset=UTF-8"},
+    )
+
+    client = SheetsClient(hass, _service_account_info())
+    with pytest.raises(SheetsApiError) as excinfo:
+        await client.read_rows(SPREADSHEET_ID, WORKSHEET)
+
+    error = excinfo.value.args[0]["error"]
+    assert error["code"] == 400
+    assert "Bad Request" in error["message"]

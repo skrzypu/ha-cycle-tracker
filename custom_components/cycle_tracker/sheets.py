@@ -12,6 +12,7 @@ import json
 import time
 from typing import Any
 
+import aiohttp
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
@@ -98,7 +99,7 @@ class SheetsClient:
                 "assertion": assertion,
             },
         ) as resp:
-            body: dict[str, Any] = await resp.json()
+            body = await _json_body(resp)
             if resp.status != 200:
                 raise ServiceAccountAccessTokenError(body)
 
@@ -123,7 +124,7 @@ class SheetsClient:
             params={"valueRenderOption": "UNFORMATTED_VALUE"},
             headers={"Authorization": f"Bearer {token}"},
         ) as resp:
-            body: dict[str, Any] = await resp.json()
+            body = await _json_body(resp)
             if resp.status != 200:
                 raise SheetsApiError(body)
         return body.get("values", [])
@@ -145,7 +146,7 @@ class SheetsClient:
             headers={"Authorization": f"Bearer {token}"},
             json={"values": [values]},
         ) as resp:
-            body: dict[str, Any] = await resp.json()
+            body = await _json_body(resp)
             if resp.status != 200:
                 raise SheetsApiError(body)
 
@@ -167,7 +168,7 @@ class SheetsClient:
             headers={"Authorization": f"Bearer {token}"},
             json={"values": [values]},
         ) as resp:
-            body: dict[str, Any] = await resp.json()
+            body = await _json_body(resp)
             if resp.status != 200:
                 raise SheetsApiError(body)
 
@@ -187,9 +188,21 @@ class SheetsClient:
             url,
             headers={"Authorization": f"Bearer {token}"},
         ) as resp:
-            body: dict[str, Any] = await resp.json()
+            body = await _json_body(resp)
             if resp.status != 200:
                 raise SheetsApiError(body)
+
+
+async def _json_body(resp: aiohttp.ClientResponse) -> dict[str, Any]:
+    """Decode a JSON body, falling back to an error-shaped dict for non-JSON replies."""
+    try:
+        body = await resp.json(content_type=None)
+    except (json.JSONDecodeError, TypeError, ValueError):
+        text = await resp.text()
+        return {"error": {"code": resp.status, "message": text[:200]}}
+    if isinstance(body, dict):
+        return body
+    return {"error": {"code": resp.status, "message": str(body)[:200]}}
 
 
 def _column_letter(index: int) -> str:

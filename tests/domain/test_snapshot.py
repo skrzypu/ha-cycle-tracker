@@ -126,3 +126,68 @@ def test_a_snapshot_is_deterministic(
     assert build_snapshot(periods, CONFIG, DEFAULT_STRATEGY, TODAY) == (
         build_snapshot(periods, CONFIG, DEFAULT_STRATEGY, TODAY)
     )
+
+
+def test_period_open_is_true_when_a_period_has_no_end(
+    make_period: Callable[..., Period],
+) -> None:
+    periods = [make_period(date(2026, 11, 10))]
+
+    snapshot = build_snapshot(periods, CONFIG, DEFAULT_STRATEGY, TODAY)
+
+    assert snapshot.period_open is True
+
+
+def test_period_open_is_false_when_every_period_is_closed(
+    make_period: Callable[..., Period],
+) -> None:
+    periods = [
+        make_period(date(2026, 9, 8), end=date(2026, 9, 12)),
+        make_period(date(2026, 10, 6), end=date(2026, 10, 10)),
+    ]
+
+    snapshot = build_snapshot(periods, CONFIG, DEFAULT_STRATEGY, TODAY)
+
+    assert snapshot.period_open is False
+
+
+def test_period_open_is_false_without_periods() -> None:
+    snapshot = build_snapshot([], CONFIG, DEFAULT_STRATEGY, TODAY)
+
+    assert snapshot.period_open is False
+
+
+def test_period_open_counts_any_open_row_even_when_the_latest_is_closed(
+    make_period: Callable[..., Period],
+) -> None:
+    periods = [
+        make_period(date(2026, 9, 8)),  # left open
+        make_period(date(2026, 10, 6), end=date(2026, 10, 10)),
+    ]
+
+    snapshot = build_snapshot(periods, CONFIG, DEFAULT_STRATEGY, TODAY)
+
+    assert snapshot.period_open is True
+
+
+def test_cycle_start_reports_the_most_recent_start_on_or_before_today(
+    make_period: Callable[..., Period],
+) -> None:
+    periods = [
+        make_period(date(2026, 9, 8), end=date(2026, 9, 12)),
+        make_period(date(2026, 10, 6), end=date(2026, 10, 10)),
+        make_period(date(2026, 11, 3), end=date(2026, 11, 7)),
+        make_period(date(2026, 11, 20), end=date(2026, 11, 24)),  # future, excluded
+    ]
+
+    snapshot = build_snapshot(periods, CONFIG, DEFAULT_STRATEGY, TODAY)
+
+    assert snapshot.cycle_start == date(2026, 11, 3)
+    assert snapshot.period_open is False
+
+
+def test_cycle_start_is_none_without_periods() -> None:
+    snapshot = build_snapshot([], CONFIG, DEFAULT_STRATEGY, TODAY)
+
+    assert snapshot.cycle_start is None
+    assert snapshot.period_open is False

@@ -424,7 +424,8 @@ async def test_a_late_period_freezes_the_date_and_clamps_days_until(
     Two stable 28-day cycles put the predicted date at 2026-11-09, four days
     before the frozen 2026-11-13. The date must stay in the past, the days
     count must clamp to zero, and the late flag plus the late count carry the
-    distinction from "due today".
+    distinction from "due today". The ovulation countdown skips the overdue
+    cycle entirely and lands on the following one.
     """
     await closed_period(date(2026, 8, 17))
     await closed_period(date(2026, 9, 14))
@@ -440,7 +441,7 @@ async def test_a_late_period_freezes_the_date_and_clamps_days_until(
     assert days_until.attributes[ATTR_IS_LATE] is True
     assert days_until.attributes[ATTR_DAYS_LATE] == 4
 
-    assert state_of(DAYS_UNTIL_OVULATION).state == "0"
+    assert state_of(DAYS_UNTIL_OVULATION).state == "10"
     assert state_of(CYCLE_DAY).state == "33"
     assert state_of(CYCLE_PHASE).state == "luteal"
 

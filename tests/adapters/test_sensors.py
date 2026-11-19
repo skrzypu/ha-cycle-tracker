@@ -84,6 +84,34 @@ async def test_single_period_keeps_prediction_entities_unknown(
     assert hass.states.get("sensor.cycle_tracker_days_until_period").state == "unknown"
 
 
+async def test_cycle_start_date_reports_the_most_recent_start(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+    period_row: Callable[..., dict[str, Any]],
+    frozen_today: date,
+) -> None:
+    """The cycle start date sensor shows the most recent recorded start."""
+    start = frozen_today - timedelta(days=10)
+    coordinator.add_period(period_row(start))
+    coordinator.async_update_listeners()
+
+    state = hass.states.get("sensor.cycle_tracker_cycle_start_date")
+
+    assert state is not None
+    assert state.state == start.isoformat()
+
+
+async def test_cycle_start_date_is_unknown_without_periods(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+) -> None:
+    """With no recorded periods the cycle start date is unknown."""
+    state = hass.states.get("sensor.cycle_tracker_cycle_start_date")
+
+    assert state is not None
+    assert state.state == "unknown"
+
+
 async def test_cycle_day_counts_past_the_configured_length(
     hass,
     coordinator: CycleTrackerCoordinator,
@@ -152,7 +180,9 @@ async def test_prediction_windows_are_exposed(
         == (frozen_today + timedelta(days=2)).isoformat()
     )
 
-    ovulation_center = frozen_today - timedelta(days=14)
+    # The running cycle's ovulation has already passed, so the sensor reports
+    # the next one: one cycle later, fourteen days before the following period.
+    ovulation_center = frozen_today + timedelta(days=14)
     assert ovulation.state == ovulation_center.isoformat()
     assert (
         ovulation.attributes[ATTR_OVULATION_WINDOW_START]

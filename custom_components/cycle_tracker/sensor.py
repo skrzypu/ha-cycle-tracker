@@ -54,6 +54,7 @@ async def async_setup_entry(
     async_add_entities(
         [
             CycleDaySensor(coordinator, entry),
+            CycleStartDateSensor(coordinator, entry),
             CyclePhaseSensor(coordinator, entry),
             NextPeriodDateSensor(coordinator, entry),
             NextOvulationDateSensor(coordinator, entry),
@@ -123,6 +124,22 @@ class CycleDaySensor(CycleTrackerSensor):
         return {
             ATTR_CYCLE_DAY: self.native_value,
         }
+
+
+class CycleStartDateSensor(CycleTrackerSensor):
+    """Sensor for the start date of the current cycle."""
+
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "Cycle Start Date", "cycle_start_date")
+        self._attr_device_class = SensorDeviceClass.DATE
+        self._attr_icon = "mdi:calendar-start"
+
+    @property
+    def native_value(self) -> date | None:
+        """Return the most recent recorded period start on or before today."""
+        return self._snapshot.cycle_start
 
 
 class CyclePhaseSensor(CycleTrackerSensor):
@@ -198,26 +215,26 @@ class NextOvulationDateSensor(CycleTrackerSensor):
 
     @property
     def native_value(self) -> date | None:
-        """Return the predicted ovulation center date."""
+        """Return the centre of the first ovulation that has not passed."""
         prediction = self._prediction
         if prediction is None:
             return None
-        return prediction.ovulation_center
+        return prediction.next_ovulation.ovulation_center
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the ovulation and fertile windows."""
+        """Return the windows of that upcoming ovulation."""
         prediction = self._prediction
         attributes: dict[str, Any] = {
             ATTR_NEXT_OVULATION_DATE: (
-                prediction.ovulation_center.isoformat()
+                prediction.next_ovulation.ovulation_center.isoformat()
                 if prediction is not None
                 else None
             )
         }
         if prediction is not None:
-            ovulation_start, ovulation_end = prediction.ovulation
-            fertile_start, fertile_end = prediction.fertile
+            ovulation_start, ovulation_end = prediction.next_ovulation.ovulation
+            fertile_start, fertile_end = prediction.next_ovulation.fertile
             attributes[ATTR_OVULATION_WINDOW_START] = ovulation_start.isoformat()
             attributes[ATTR_OVULATION_WINDOW_END] = ovulation_end.isoformat()
             attributes[ATTR_FERTILE_WINDOW_START] = fertile_start.isoformat()
