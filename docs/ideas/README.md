@@ -57,6 +57,12 @@ only then promoted.
 | [period-logging.md](period-logging.md) | Backdating a period start, closing a specific past period, dedup | idea |
 | [safe-days.md](safe-days.md) | Safe days for unprotected sex: today's status, upcoming ranges, confidence | idea |
 | [internationalization.md](internationalization.md) | Card and config flow in more languages, translation loading (i18n) | idea |
+| [update-cadence.md](update-cadence.md) | Coordinator update cadence: daily instead of sub-hourly polling, manual refresh | idea |
+| [prediction-configurability.md](prediction-configurability.md) | Configurable prediction and statistics window (number of cycles used) | idea |
+| [history-presentation.md](history-presentation.md) | Google Sheet row order (newest on top), charts of period and cycle lengths | idea |
+| [symptoms-and-observations.md](symptoms-and-observations.md) | Symptoms, basal body temperature and LH tests alongside periods | idea |
+| [diagnostics.md](diagnostics.md) | Last refresh, excluded cycles, gaps and data quality | idea |
+| [prediction-accuracy.md](prediction-accuracy.md) | Scoring past predictions against actual period starts | idea |
 | [parked/](parked/README.md) | Drafted OpenSpec changes that are not active work | parked |
 
 ## Order of work
