@@ -71,8 +71,9 @@ volumes are available.
 
 ## Follow-up
 
-- [ ] Publish GitHub releases whose tag matches `version` in
-      `custom_components/cycle_tracker/manifest.json`.
+- [x] Publish GitHub releases whose tag matches `version` in
+      `custom_components/cycle_tracker/manifest.json` — first release `v0.2.4`
+      published 2026-11-19, pointing at `e5d457d`.
 - [ ] Keep `hacs.json` at the repository root and do not open a default-catalog
       submission.
 - [ ] Revisit this record if default-catalog listing or add-on packaging is
