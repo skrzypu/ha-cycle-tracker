@@ -21,6 +21,8 @@ TRANSLATION_FILES = {
     "translations/pl.json": COMPONENT_DIR / "translations" / "pl.json",
 }
 
+HISTORY_WINDOW_KEY = "history_window"
+
 
 def _nested_keys(value: Any, prefix: str = "") -> set[str]:
     """Return every nested key path, recursing through JSON objects only."""
@@ -53,3 +55,13 @@ def test_translation_files_expose_identical_keys() -> None:
         extra = sorted(keys - baseline)
         assert not missing, f"{name} is missing keys from strings.json: {missing}"
         assert not extra, f"{name} adds keys not present in strings.json: {extra}"
+
+
+def test_history_window_is_labelled_in_both_forms() -> None:
+    """The same key carries a non-empty label in each file, in both forms."""
+    for name, path in TRANSLATION_FILES.items():
+        payload = _load(path)
+        for section, step in (("config", "preferences"), ("options", "init")):
+            data = payload[section]["step"][step]["data"]
+            assert HISTORY_WINDOW_KEY in data, f"{name} missing {section}.{step}"
+            assert str(data[HISTORY_WINDOW_KEY]).strip(), f"{name} has empty label"

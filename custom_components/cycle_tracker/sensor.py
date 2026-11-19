@@ -21,6 +21,7 @@ from .const import (
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
     ATTR_IS_LATE,
+    ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH,
     ATTR_LONGEST_CYCLE,
     ATTR_NEXT_OVULATION_DATE,
     ATTR_NEXT_PERIOD_DATE,
@@ -321,6 +322,9 @@ class CycleStatisticsSensor(CycleTrackerSensor):
         band = statistics.confidence_band
         attributes: dict[str, Any] = {
             ATTR_AVERAGE_CYCLE_LENGTH: statistics.average_cycle_length,
+            ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH: (
+                statistics.lifetime_average_cycle_length
+            ),
             ATTR_AVERAGE_PERIOD_LENGTH: statistics.average_period_length,
             ATTR_STD_DEV_CYCLE: statistics.cycle_length_std_dev,
             ATTR_STD_DEV_PERIOD: statistics.period_length_std_dev,

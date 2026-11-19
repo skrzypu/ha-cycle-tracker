@@ -34,28 +34,36 @@ dates. Prediction is only as good as the history behind it:
 
 - **Minimum history:** two completed cycles. Before that, the prediction sensor
   is `unknown` — the configured cycle length is not used as a fake prediction.
-- **History window:** the six most recent usable completed cycles feed the
-  prediction. Outliers and gaps are removed first, so an excluded cycle does not
-  take a slot.
+- **History window:** the N most recent usable completed cycles feed the
+  prediction and the windowed cycle-length average. N is a setting in the
+  integration options, a whole number from 6 to 24: new installations start at
+  12, existing ones stay at 6 until you change it. Outliers and gaps are removed
+  first, so an excluded cycle does not take a slot.
 - **Algorithms:** you choose one of three —
   - **Arithmetic mean** — averages the cycle lengths equally.
   - **Weighted moving average** — weights newer cycles more heavily (the
     default).
   - **Median** — the middle value, most resistant to outliers.
 - **Outliers:** cycles outside 15–90 days are excluded from prediction and
-  from the cycle-length statistics. They stay in your recorded history and in
+  from both cycle-length averages. They stay in your recorded history and in
   the tracked-period count, and produce a warning, so you can fix a typo or
   accept a genuinely long cycle.
 - **Data gaps:** a gap longer than 90 days is treated as missing data, not a
   cycle, and is excluded the same way. It also ends the history window: only
   cycles recorded after the most recent long gap feed the prediction, so after a
-  long break you need two new cycles before a prediction returns.
+  long break you need two new cycles before a prediction returns. Earlier cycles
+  still contribute to the lifetime average below.
+- **Lifetime average:** besides the windowed average, the statistics show one
+  average from all in-range cycles in your recorded history — outliers excluded,
+  cycles before a long gap included. The two averages are separate rows so you
+  can see how recent cycles differ from your long-term pattern. When no in-range
+  cycle exists, it is `unknown`.
 
 The full derivation, from recorded periods to the values on the sensors:
 
 ```mermaid
 flowchart LR
-    H[Last 6 completed cycles] --> A[Chosen algorithm<br/>mean / weighted moving average / median]
+    H[Last N completed cycles (6-24)] --> A[Chosen algorithm<br/>mean / weighted moving average / median]
     A --> P[Predicted cycle length]
     P --> D[Next period date]
     D --> U[Uncertainty window<br/>±1 sigma, min ±2 days]
@@ -63,7 +71,7 @@ flowchart LR
     O --> OW[Ovulation window ±2 days]
     O --> F[Fertile window<br/>5 days before ovulation .. ovulation]
     H --> S[Sigma and mean]
-    S --> C[Confidence = min(1, 1−σ/mean) × min(1, n/6)]
+    S --> C[Confidence = min(1, 1−σ/mean) × min(1, n/N)]
     C --> B[Band: low / medium / high]
 ```
 
@@ -103,11 +111,11 @@ Confidence is a number from 0 to 1 that answers "how much should this
 prediction be trusted":
 
 ```
-confidence = min(1, 1 − σ/mean) × min(1, n/6)
+confidence = min(1, 1 − σ/mean) × min(1, n/N)
 ```
 
 where σ is the standard deviation of the cycles used, `mean` is their average,
-and `n` is how many cycles there are. It rises as your cycles become more
+`n` is how many cycles there are and `N` is your configured history window. It rises as your cycles become more
 regular and as you log more of them, and is exposed as an attribute of the
 statistics sensor together with a verbal band:
 

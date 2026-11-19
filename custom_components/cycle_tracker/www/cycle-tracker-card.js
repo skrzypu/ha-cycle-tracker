@@ -1293,8 +1293,13 @@ class CycleTrackerCard extends HTMLElement {
     const rows = [
       {
         key: "average_cycle_length",
-        label: "Średnia długość cyklu",
+        label: "Średnia długość cyklu (okno)",
         formatted: formatNumeric(attrs.average_cycle_length, 1),
+      },
+      {
+        key: "lifetime_average_cycle_length",
+        label: "Średnia długość cyklu (cała historia)",
+        formatted: formatNumeric(attrs.lifetime_average_cycle_length, 1),
       },
       {
         key: "average_period_length",

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from datetime import date, timedelta
+from statistics import fmean
 from typing import Any
 
 import pytest
@@ -17,6 +18,7 @@ from custom_components.cycle_tracker.const import (
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
     ATTR_IS_LATE,
+    ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH,
     ATTR_OVULATION_WINDOW_END,
     ATTR_OVULATION_WINDOW_START,
     ATTR_PREDICTED_CYCLE_LENGTH,
@@ -48,6 +50,21 @@ def _three_regular_cycles(
     """Seed three four-week cycles ending in ``last_start``."""
     for weeks_ago in (8, 4, 0):
         coordinator.add_period(period_row(last_start - timedelta(weeks=weeks_ago)))
+    coordinator.async_update_listeners()
+
+
+def _seed_cycles(
+    coordinator: CycleTrackerCoordinator,
+    period_row: Callable[..., dict[str, Any]],
+    lengths: list[int],
+    last_start: date,
+) -> None:
+    """Seed period rows whose start-to-start lengths are ``lengths``."""
+    starts = [last_start]
+    for length in reversed(lengths):
+        starts.insert(0, starts[0] - timedelta(days=length))
+    for start in starts:
+        coordinator.add_period(period_row(start))
     coordinator.async_update_listeners()
 
 
@@ -227,6 +244,47 @@ async def test_statistics_use_the_windowed_history(
     assert state.attributes[ATTR_PREDICTION_CONFIDENCE] == pytest.approx(1 / 3)
     assert state.attributes[ATTR_CONFIDENCE_BAND] == "low"
     assert state.attributes[ATTR_WARNINGS] == []
+
+
+async def test_statistics_expose_the_lifetime_average(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+    period_row: Callable[..., dict[str, Any]],
+    frozen_today: date,
+) -> None:
+    """The lifetime row covers every in-range cycle, the windowed row does not."""
+    _seed_cycles(
+        coordinator,
+        period_row,
+        [28, 10, 30, 31, 32, 33, 34, 35],
+        frozen_today,
+    )
+
+    state = hass.states.get("sensor.cycle_tracker_statistics")
+
+    assert state is not None
+    assert state.attributes[ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH] == pytest.approx(
+        fmean([28, 30, 31, 32, 33, 34, 35])
+    )
+    assert state.attributes[ATTR_AVERAGE_CYCLE_LENGTH] == pytest.approx(
+        fmean([30, 31, 32, 33, 34, 35])
+    )
+
+
+async def test_statistics_lifetime_average_is_none_without_in_range_cycles(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+    period_row: Callable[..., dict[str, Any]],
+    frozen_today: date,
+) -> None:
+    """Only out-of-range cycles leave the lifetime attribute present but unknown."""
+    _seed_cycles(coordinator, period_row, [10, 12], frozen_today)
+
+    state = hass.states.get("sensor.cycle_tracker_statistics")
+
+    assert state is not None
+    assert ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH in state.attributes
+    assert state.attributes[ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH] is None
 
 
 async def test_statistics_report_excluded_cycles_as_warnings(

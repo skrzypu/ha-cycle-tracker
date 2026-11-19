@@ -15,6 +15,7 @@
         "title": "Prediction preferences",
         "data": {
           "prediction_algorithm": "Prediction algorithm",
+          "history_window": "History window (number of recent cycles)",
           "notification_offset_days": "Days before the period to send a notification"
         }
       },
@@ -60,6 +61,7 @@
           "cycle_length": "Average cycle length (days)",
           "period_length": "Average period length (days)",
           "prediction_algorithm": "Prediction algorithm",
+          "history_window": "History window (number of recent cycles)",
           "notification_offset_days": "Days before the period to send a notification",
           "enable_notifications": "Enable period and ovulation notifications",
           "notification_time": "Time of day to send notifications",

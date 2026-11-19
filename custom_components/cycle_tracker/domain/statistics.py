@@ -1,9 +1,10 @@
 """Cycle statistics from the same usable window the prediction reads.
 
-Cycle-length statistics describe the filtered, gap-truncated six-cycle window;
-period-length statistics use completed periods only. Below two usable cycles the
-configured lengths stand in, with zero deviations, so the sensors degrade
-gracefully instead of reporting a one-sample average as if it were measured.
+Cycle-length statistics describe the filtered, gap-truncated window of at most
+N cycles (N is the configured history window); period-length statistics use
+completed periods only. Below two usable cycles the configured lengths stand
+in, with zero deviations, so the sensors degrade gracefully instead of
+reporting a one-sample average as if it were measured.
 """
 
 from __future__ import annotations
@@ -39,6 +40,7 @@ class CycleStatistics:
     longest_cycle: int
     confidence: float | None
     confidence_band: ConfidenceBand | None
+    lifetime_average_cycle_length: float | None = None
 
 
 def statistics(
@@ -51,6 +53,8 @@ def statistics(
     """
     usable_lengths = [cycle.length_days for cycle in history.usable]
     average, deviation, shortest, longest = _cycle_measures(usable_lengths, config)
+    in_range_lengths = [cycle.length_days for cycle in history.in_range]
+    lifetime_average = fmean(in_range_lengths) if in_range_lengths else None
     period_lengths = _completed_period_lengths(periods)
     average_period, period_deviation = _period_measures(period_lengths, config)
 
@@ -75,6 +79,7 @@ def statistics(
         longest_cycle=longest,
         confidence=score,
         confidence_band=band,
+        lifetime_average_cycle_length=lifetime_average,
     )
 
 

@@ -100,6 +100,14 @@ class FakeWS:
         connection.send_result(msg["id"])
 
 
+def test_seeded_view_still_uses_the_single_existing_card_element() -> None:
+    """The bundled view seeds one card, not a second card for the new average."""
+    cards = DASHBOARD_VIEW["views"][0]["cards"]
+
+    assert len(cards) == 1
+    assert cards[0]["type"] == "custom:cycle-tracker-card"
+
+
 @pytest.fixture
 def env(hass: HomeAssistant, monkeypatch: pytest.MonkeyPatch) -> Any:
     """Install fake Lovelace, websocket and marker stores, then restore them."""

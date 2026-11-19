@@ -7,7 +7,7 @@ whether that number is the user's choice instead of a product constant.
 
 ### I-013: Configurable number of cycles used in calculation (6 → 12)
 
-- **Status:** idea
+- **Status:** decided
 - **Problem:** BDR-0004 fixes the history used for prediction to the last 6
   completed cycles (`docs/bdr/0004-prediction-is-a-window-not-a-date.md:42`), and
   it is not user-configurable. Cycle-length statistics use the same window
@@ -53,4 +53,19 @@ whether that number is the user's choice instead of a product constant.
   statistics sensor keep an all-history figure alongside
   the windowed one (still open in `prediction-algorithms.md`, question 9)? Is
   this options-flow only, or also a service to change it?
-- **Decision:** —
+- **Decision:** decided on 2026-11-19, to be recorded as an amendment to
+  BDR-0004 by `@decision-recorder`. One shared window serves prediction and
+  statistics. The setting lives in the config entry options only (ADR-0011):
+  no service to change it. Range 6–24, with 12 written into `entry.data` for
+  new entries and `DEFAULT_HISTORY_WINDOW = 6` as the fallback for existing
+  ones — no migration. The confidence denominator follows the configured N;
+  the code already does this via `target=config.history_window`, so the
+  amendment changes `n/6` to `n/N` in prose too. Cycle statistics keep the
+  windowed average and gain a second lifetime average computed from all
+  in-range cycles in recorded history (option 2: outliers excluded, cycles
+  before the most recent gap included). This resolves the wording conflict
+  between BDR-0004 ("outliers stay in statistics") and
+  `docs/guide/algorithms.md` ("excluded from cycle-length statistics") in
+  favour of exclusion, and the amendment must say so. On the card, option A
+  wins: both averages become labelled rows in the existing statistics section
+  of `cycle-tracker-card.js`; a separate statistics card is parked as I-019.

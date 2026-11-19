@@ -15,6 +15,7 @@
         "title": "Preferencje przewidywania",
         "data": {
           "prediction_algorithm": "Algorytm przewidywania",
+          "history_window": "Okno historii (liczba ostatnich cykli)",
           "notification_offset_days": "Ile dni przed okresem wysłać powiadomienie"
         }
       },
@@ -60,6 +61,7 @@
           "cycle_length": "Średnia długość cyklu (dni)",
           "period_length": "Średnia długość okresu (dni)",
           "prediction_algorithm": "Algorytm przewidywania",
+          "history_window": "Okno historii (liczba ostatnich cykli)",
           "notification_offset_days": "Ile dni przed okresem wysłać powiadomienie",
           "enable_notifications": "Włącz powiadomienia o okresie i owulacji",
           "notification_time": "Godzina wysyłania powiadomień",

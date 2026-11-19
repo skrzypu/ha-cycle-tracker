@@ -60,6 +60,17 @@ async def _call_service(
     return response
 
 
+async def test_no_service_is_registered_for_the_history_window(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+) -> None:
+    """The window is settings-only: no third service is added to the domain."""
+    assert set(hass.services.async_services()[DOMAIN]) == {
+        SERVICE_LOG_START,
+        SERVICE_LOG_END,
+    }
+
+
 async def test_log_start_without_target_records_open_period(
     hass: HomeAssistant,
     coordinator: CycleTrackerCoordinator,

@@ -39,7 +39,8 @@ The rules that make up that promise:
 - **Phase boundaries:** derived from the ovulation window — menstrual while
   within the period length, ovulatory around the ovulation window, follicular
   before it, luteal after it.
-- **History:** the last 6 completed cycles. A cycle is start-to-start.
+- **History:** the last N completed cycles, where N is the configurable shared
+  window (6–24; see the 2026-11-19 refinement). A cycle is start-to-start.
 - **Minimum history:** 2 completed cycles. Before that the prediction sensor is
   `unknown`; there is no fallback to the configured cycle length.
 - **Outliers:** cycles outside the 15–90 day range are excluded from prediction
@@ -48,8 +49,9 @@ The rules that make up that promise:
 - **Data gaps:** a gap longer than 90 days is missing data, not a cycle.
 - **Algorithms:** arithmetic mean, weighted moving average (the default), and
   median, user-selectable.
-- **Confidence:** `min(1, 1 − σ/mean) × min(1, n/6)`, exposed as an attribute of
-  the statistics sensor with bands low < 0.4, medium 0.4–0.7, high > 0.7.
+- **Confidence:** `min(1, 1 − σ/mean) × min(1, n/N)`, where N is the configured
+  window, exposed as an attribute of the statistics sensor with bands low < 0.4,
+  medium 0.4–0.7, high > 0.7.
 - **Late period:** when the predicted date passes without a new period, the
   sensor marks it late. The predicted date does not move on its own.
 - **Wording:** must not read as a contraceptive guarantee. The exact copy is
@@ -60,13 +62,14 @@ amended in place rather than superseded because the commitment is unchanged. The
 following rules take precedence where the wording above is less specific.
 
 - **Filter before window.** Out-of-range cycles and the cycle at a gap boundary
-  are removed first, then the six most recent usable cycles are taken. An
-  excluded cycle does not occupy a window slot.
+  are removed first, then the N most recent usable cycles are taken, where N is
+  the configured shared window. An excluded cycle does not occupy a window slot.
 - **Gap truncates the window.** The window stops at the most recent gap longer
-  than 90 days: only cycles recorded after it feed prediction, at most six.
-  Earlier cycles stay in history and statistics but do not influence the
-  prediction — a long break describes a different physiological state, so
-  averaging across it would fake precision.
+  than 90 days: only cycles recorded after it feed prediction, at most N.
+  Earlier cycles do not influence the prediction or the windowed average — a
+  long break describes a different physiological state, so averaging across it
+  would fake precision. They remain in recorded history and contribute only to
+  the lifetime average added on 2026-11-19.
 - **Population σ, ±2 floor.** Sigma is the population standard deviation of the
   usable lengths, treated as the whole set. Half-width is
   `max(2, ceil(sigma))`, so the ±2-day floor holds even at σ = 0; this replaces
@@ -94,6 +97,45 @@ following rules take precedence where the wording above is less specific.
   due or late; the late flag and late-day count carry the distinction. Cycle day
   is an elapsed count and does not wrap at the configured length.
 
+Refined on 2026-11-19 in response to I-013
+(`docs/ideas/prediction-configurability.md`), amended in place rather than
+superseded because this generalizes the history window without changing the
+commitment: prediction is still a window, not a date, and the core promise —
+uncertainty, ovulation and fertile windows, late period, phases, and the
+two-cycle minimum — stands. The following rules take precedence where the
+wording above is less specific.
+
+- **One shared configurable window N.** A single setting in the config-entry
+  options (ADR-0011), read through its resolver, feeds both prediction and
+  cycle-length statistics; there is no service to change it. Range 6–24. New
+  config entries store 12 in `entry.data`; existing ones fall back to
+  `DEFAULT_HISTORY_WINDOW = 6`. No migration. "At most N" above means this
+  number, not a fixed six.
+- **Confidence denominator follows N.** The existing formula
+  `min(1, 1 − σ/mean) × min(1, n/N)` already tracks the window through
+  `target=config.history_window` in `domain/statistics.py` and
+  `domain/prediction.py`; N replaces the literal 6 in prose. The bands stay
+  low < 0.4, medium 0.4–0.7, high > 0.7.
+- **Two-cycle minimum unchanged.** Prediction still needs two completed cycles.
+  The 6-cycle floor is the lower bound of the setting and a cap on how many
+  cycles the window uses, not a requirement on data: a user with 2–5 completed
+  cycles still gets a prediction.
+- **Lifetime cycle-length average added.** The statistics sensor keeps the
+  windowed average and gains one additional lifetime average computed from all
+  in-range cycles in recorded history: outlier cycles (outside 15–90 days) are
+  excluded, while cycles before the most recent long gap are included. It is one
+  extra statistic — not a chart and not a second window.
+- **Outlier wording resolved: exclusion.** BDR-0004 above says outliers "stay in
+  history and statistics", while `docs/guide/algorithms.md` says they are
+  "excluded from prediction and from the cycle-length statistics". The latter
+  wins: outliers are excluded from both cycle-length averages. They stay in
+  recorded history and keep their warning. This closes the conflict in favour
+  of exclusion.
+- **Both averages on the existing card.** The windowed and the lifetime average
+  appear as two labelled rows in the statistics section of the shipped Lovelace
+  card (`cycle-tracker-card.js`, `_renderStatistics`); there is no separate card
+  for now. Charts remain I-015 and a separate statistics card is parked as I-019.
+
 Two consequences deserve prose. On a 28-day cycle the ovulation centre falls on
 **cycle day 15** (day 1 is the start), not day 14 — the 14 counts backwards from
 the next period. And the calendar is a projection of the frozen prediction, not
@@ -120,9 +162,11 @@ window runs the five days before ovulation through ovulation day; the
 uncertainty window is ±1 standard deviation of the cycle lengths used, floored
 at ±2 days. Dates are illustrative; real values come from the user's history.
 
-In scope: what the product promises to show and how each window is derived.
-Out of scope: the implementation structure, the exact card copy, and any
-all-history statistic beyond the prediction window.
+In scope: what the product promises to show and how each window is derived, plus
+the one lifetime cycle-length average added on 2026-11-19.
+Out of scope: the implementation structure, the exact card copy, charts (I-015),
+a separate statistics card (I-019), and any other all-history statistic beyond
+the prediction window.
 
 ## Alternatives considered
 
@@ -185,3 +229,15 @@ available to validate them.
       stays at ±2 days rather than collapsing.
 - [ ] Revisit this record if user feedback shows the windows are too wide to
       automate against or too narrow to be honest.
+- [ ] Add the shared window N to the config-entry options through ADR-0011's
+      resolver (range 6–24; store 12 in `entry.data` for new entries, fall back
+      to `DEFAULT_HISTORY_WINDOW = 6` for existing ones, no migration; no
+      service).
+- [ ] Generalize the confidence denominator to N, add the lifetime cycle-length
+      average, and render both averages as labelled rows in
+      `cycle-tracker-card.js` `_renderStatistics`.
+- [ ] Update downstream artifacts to match the configured window and the
+      exclusion wording — without editing this record again:
+      `openspec/specs/cycle-prediction/spec.md` requirements "Select the last six
+      usable completed cycles" and "Report prediction confidence",
+      `docs/guide/algorithms.md`, and code docstrings.

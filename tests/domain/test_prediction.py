@@ -310,6 +310,41 @@ def test_six_stable_cycles_score_high_confidence(
     assert prediction.confidence_band is ConfidenceBand.HIGH
 
 
+def test_the_confidence_denominator_follows_the_configured_window(
+    make_periods: Callable[..., list[Period]],
+) -> None:
+    # mean 28, population standard deviation exactly 1
+    periods = make_periods([26, 29, 29, 28, 28, 28])
+    twelve = PredictionConfig(period_length=5, cycle_length=28, history_window=12)
+
+    six = _predict(periods)
+    wide = _predict(periods, config=twelve)
+
+    assert six is not None
+    assert wide is not None
+    assert six.usable_cycle_count == 6
+    assert wide.usable_cycle_count == 6
+    assert six.confidence == pytest.approx(0.9643, abs=1e-4)
+    assert six.confidence_band is ConfidenceBand.HIGH
+    assert wide.confidence == pytest.approx(0.4821, abs=1e-4)
+    assert wide.confidence_band is ConfidenceBand.MEDIUM
+
+
+def test_a_larger_window_uses_more_cycles_in_the_prediction(
+    make_periods: Callable[..., list[Period]],
+) -> None:
+    periods = make_periods([27, 28, 29, 28, 30, 28, 31, 29])
+    twelve = PredictionConfig(period_length=5, cycle_length=28, history_window=12)
+
+    six = _predict(periods)
+    wide = _predict(periods, config=twelve)
+
+    assert six is not None
+    assert wide is not None
+    assert six.usable_cycle_count == 6
+    assert wide.usable_cycle_count == 8
+
+
 def test_confidence_describes_the_data_not_the_strategy(
     make_periods: Callable[..., list[Period]],
 ) -> None:

@@ -304,3 +304,57 @@ def test_warnings_are_ordered_by_the_period_they_name(
         WarningKind.MISSING_FLOW,
         WarningKind.MISSING_FLOW,
     ]
+
+
+# --- one shared window, and the all-history in-range view (tasks 2.2, 3.1) ----
+
+
+def test_one_window_limits_the_usable_cycles_to_at_most_n(
+    make_periods: Callable[..., list[Period]],
+) -> None:
+    periods = make_periods([27, 28, 29, 28, 30, 28, 31, 29])
+    twelve = PredictionConfig(period_length=5, cycle_length=28, history_window=12)
+
+    six_history = build_history(periods, CONFIG)
+    twelve_history = build_history(periods, twelve)
+
+    assert _lengths(six_history.usable) == [29, 28, 30, 28, 31, 29]
+    assert _lengths(twelve_history.usable) == [27, 28, 29, 28, 30, 28, 31, 29]
+
+
+def test_in_range_excludes_outliers_without_the_window_slice(
+    make_periods: Callable[..., list[Period]],
+) -> None:
+    periods = make_periods([28, 10, 29, 30, 31, 32, 33, 34])
+
+    history = build_history(periods, CONFIG)
+
+    assert _lengths(history.in_range) == [28, 29, 30, 31, 32, 33, 34]
+    assert _lengths(history.usable) == [29, 30, 31, 32, 33, 34]
+    assert WarningKind.OUTLIER in _kinds(history)
+
+
+def test_in_range_retains_cycles_before_the_recent_gap(
+    make_period: Callable[..., Period],
+) -> None:
+    periods = [
+        make_period(date(2026, 1, 1)),
+        make_period(date(2026, 1, 29)),
+        make_period(date(2026, 2, 26)),
+        make_period(date(2026, 9, 1)),
+        make_period(date(2026, 9, 29)),
+        make_period(date(2026, 10, 27)),
+    ]
+
+    history = build_history(periods, CONFIG)
+
+    assert _lengths(history.cycles) == [28, 28, 187, 28, 28]
+    assert _lengths(history.in_range) == [28, 28, 28, 28]
+    assert _lengths(history.usable) == [28, 28]
+    assert _kinds(history) == [WarningKind.GAP]
+
+
+def test_a_directly_constructed_history_has_an_empty_in_range() -> None:
+    history = History(cycles=(), usable=(), warnings=())
+
+    assert history.in_range == ()

@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 from .config_flow import _resolve_service_account_path
 from .const import (
     CONF_CYCLE_LENGTH,
+    CONF_HISTORY_WINDOW,
     CONF_LAST_PERIOD_START,
     CONF_PERIOD_LENGTH,
     CONF_POLL_INTERVAL,
@@ -35,7 +36,12 @@ from .const import (
     STORAGE_VERSION_SYNC_CACHE,
 )
 from .domain.models import Period
-from .domain.ports import Clock, PeriodRepository, PredictionConfig
+from .domain.ports import (
+    DEFAULT_HISTORY_WINDOW,
+    Clock,
+    PeriodRepository,
+    PredictionConfig,
+)
 from .domain.prediction import Snapshot, build_snapshot
 from .repairs import (
     ISSUE_SHEET_AUTH_FAILED,
@@ -417,6 +423,7 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         return PredictionConfig(
             period_length=self.get_period_length(),
             cycle_length=self.get_cycle_length(),
+            history_window=self.get_history_window(),
         )
 
     @property
@@ -478,6 +485,11 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def get_cycle_length(self) -> int:
         """Get cycle length."""
         return self._setting(CONF_CYCLE_LENGTH, DEFAULT_CYCLE_LENGTH)
+
+    def get_history_window(self) -> int:
+        """Get the shared history window, resolving options then data then 6."""
+        # NumberSelector returns floats; the domain slices with this value.
+        return int(self._setting(CONF_HISTORY_WINDOW, DEFAULT_HISTORY_WINDOW))
 
     def get_period_length(self) -> int:
         """Get period length."""

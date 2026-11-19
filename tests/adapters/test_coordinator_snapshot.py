@@ -7,12 +7,14 @@ from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
 
+import pytest
 from homeassistant.core import HomeAssistant
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.cycle_tracker.const import DOMAIN
+from custom_components.cycle_tracker.const import CONF_HISTORY_WINDOW, DOMAIN
 from custom_components.cycle_tracker.coordinator import CycleTrackerCoordinator
 from custom_components.cycle_tracker.domain.models import legacy_period_id
+from custom_components.cycle_tracker.domain.ports import DEFAULT_HISTORY_WINDOW
 
 
 async def test_snapshot_is_cached_for_the_same_reference_date(
@@ -121,6 +123,57 @@ async def test_legacy_rows_produce_a_prediction(
     assert prediction.cycle_length_days == 28
     assert prediction.next_period == frozen_today - timedelta(days=4)
     assert prediction.usable_cycle_count == 2
+
+
+async def _coordinator_with_window(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    *,
+    data_window: int | None = None,
+    options_window: int | None = None,
+) -> CycleTrackerCoordinator:
+    """Set up an entry carrying optional setup and option window values."""
+    data = dict(config_entry.data)
+    if data_window is not None:
+        data[CONF_HISTORY_WINDOW] = data_window
+    options = dict(config_entry.options)
+    if options_window is not None:
+        options[CONF_HISTORY_WINDOW] = options_window
+    hass.config_entries.async_update_entry(config_entry, data=data, options=options)
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    return hass.data[DOMAIN][config_entry.entry_id]
+
+
+@pytest.mark.parametrize(
+    ("data_window", "options_window", "expected"),
+    [
+        (None, None, DEFAULT_HISTORY_WINDOW),
+        (12, None, 12),
+        (None, 18, 18),
+        (12, 18, 18),
+    ],
+)
+async def test_history_window_resolves_options_then_data_then_default(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    data_window: int | None,
+    options_window: int | None,
+    expected: int,
+) -> None:
+    """The getter uses the resolver and the prediction config carries its value."""
+    coordinator = await _coordinator_with_window(
+        hass,
+        config_entry,
+        data_window=data_window,
+        options_window=options_window,
+    )
+    try:
+        assert coordinator.get_history_window() == expected
+        assert coordinator.get_prediction_config().history_window == expected
+    finally:
+        await hass.config_entries.async_unload(config_entry.entry_id)
+        await hass.async_block_till_done()
 
 
 async def test_malformed_rows_warn_instead_of_crashing(

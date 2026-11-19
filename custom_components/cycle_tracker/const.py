@@ -12,6 +12,7 @@ CONF_CYCLE_LENGTH = "cycle_length"
 CONF_PERIOD_LENGTH = "period_length"
 CONF_LAST_PERIOD_START = "last_period_start"
 CONF_PREDICTION_ALGORITHM = "prediction_algorithm"
+CONF_HISTORY_WINDOW = "history_window"
 CONF_NOTIFICATION_OFFSET_DAYS = "notification_offset_days"
 CONF_ENABLE_NOTIFICATIONS = "enable_notifications"
 CONF_NOTIFICATION_TIME = "notification_time"
@@ -30,6 +31,11 @@ DEFAULT_PREDICTION_ALGORITHM = "weighted_moving_average"
 DEFAULT_NOTIFICATION_OFFSET_DAYS = 2
 DEFAULT_ENABLE_NOTIFICATIONS = False
 DEFAULT_NOTIFICATION_TIME = "08:00"
+
+# Shared history window (prediction and cycle-length statistics)
+MIN_HISTORY_WINDOW = 6
+MAX_HISTORY_WINDOW = 24
+DEFAULT_HISTORY_WINDOW_NEW_ENTRY = 12
 
 # Prediction algorithms
 PREDICTION_ALGORITHMS = [
@@ -55,6 +61,7 @@ ATTR_DAYS_UNTIL_OVULATION = "days_until_ovulation"
 ATTR_PREDICTION_CONFIDENCE = "prediction_confidence"
 ATTR_CONFIDENCE_BAND = "confidence_band"
 ATTR_AVERAGE_CYCLE_LENGTH = "average_cycle_length"
+ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH = "lifetime_average_cycle_length"
 ATTR_AVERAGE_PERIOD_LENGTH = "average_period_length"
 ATTR_STD_DEV_CYCLE = "cycle_length_std_dev"
 ATTR_STD_DEV_PERIOD = "period_length_std_dev"

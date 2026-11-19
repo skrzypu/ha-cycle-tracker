@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import voluptuous as vol
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from homeassistant.core import HomeAssistant
@@ -19,6 +20,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 from custom_components.cycle_tracker.const import (
     CONF_CYCLE_LENGTH,
     CONF_ENABLE_NOTIFICATIONS,
+    CONF_HISTORY_WINDOW,
     CONF_LAST_PERIOD_START,
     CONF_NOTIFICATION_OFFSET_DAYS,
     CONF_NOTIFICATION_TIME,
@@ -28,6 +30,7 @@ from custom_components.cycle_tracker.const import (
     CONF_SERVICE_ACCOUNT_FILE,
     CONF_SPREADSHEET_ID,
     CONF_WORKSHEET,
+    DEFAULT_HISTORY_WINDOW_NEW_ENTRY,
     DOMAIN,
 )
 from custom_components.cycle_tracker.sheets import TOKEN_URI
@@ -73,18 +76,15 @@ def _write_key_file(hass: HomeAssistant) -> str:
     return str(key_path)
 
 
-async def _drive_to_sheet_step(
-    hass: HomeAssistant,
-    aioclient_mock: Any,
-) -> dict[str, Any]:
-    """Progress the config flow to the sheet step and return its result."""
+async def _drive_to_preferences_step(hass: HomeAssistant) -> dict[str, Any]:
+    """Progress the config flow to the preferences step and return its result."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
     )
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "user"
 
-    result = await hass.config_entries.flow.async_configure(
+    return await hass.config_entries.flow.async_configure(
         result["flow_id"],
         user_input={
             CONF_CYCLE_LENGTH: 28,
@@ -92,6 +92,15 @@ async def _drive_to_sheet_step(
             CONF_LAST_PERIOD_START: "2026-01-01",
         },
     )
+
+
+async def _drive_to_sheet_step(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+    preferences_input: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Progress the config flow to the sheet step and return its result."""
+    result = await _drive_to_preferences_step(hass)
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "preferences"
 
@@ -100,6 +109,7 @@ async def _drive_to_sheet_step(
         user_input={
             CONF_PREDICTION_ALGORITHM: "weighted_moving_average",
             CONF_NOTIFICATION_OFFSET_DAYS: 2,
+            **(preferences_input or {}),
         },
     )
     assert result["type"] is FlowResultType.FORM
@@ -115,6 +125,86 @@ async def _drive_to_sheet_step(
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "sheet"
     return result
+
+
+async def test_setup_preferences_default_history_window_to_twelve(
+    hass: HomeAssistant,
+) -> None:
+    """The setup form pre-fills the new-entry default for the shared window."""
+    result = await _drive_to_preferences_step(hass)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "preferences"
+    marker = next(
+        marker
+        for marker in result["data_schema"].schema
+        if str(marker.schema) == CONF_HISTORY_WINDOW
+    )
+    assert marker.default() == DEFAULT_HISTORY_WINDOW_NEW_ENTRY
+
+
+async def test_new_entry_stores_the_default_history_window(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+) -> None:
+    """Leaving the window untouched records 12 in the new entry's setup data."""
+    result = await _drive_to_sheet_step(
+        hass,
+        aioclient_mock,
+        preferences_input={CONF_HISTORY_WINDOW: DEFAULT_HISTORY_WINDOW_NEW_ENTRY},
+    )
+    aioclient_mock.post(TOKEN_URI, json=_token_response())
+    aioclient_mock.get(
+        SHEETS_RE,
+        json={
+            "values": [
+                [
+                    "period_id",
+                    "start_date",
+                    "end_date",
+                    "flow_intensity",
+                    "notes",
+                    "updated_at",
+                ]
+            ]
+        },
+    )
+    key_path = _write_key_file(hass)
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_SPREADSHEET_ID: SPREADSHEET_ID,
+            CONF_WORKSHEET: WORKSHEET,
+            CONF_SERVICE_ACCOUNT_FILE: key_path,
+            CONF_POLL_INTERVAL: 10,
+        },
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    entry: MockConfigEntry = result["result"]
+    assert entry.data[CONF_HISTORY_WINDOW] == DEFAULT_HISTORY_WINDOW_NEW_ENTRY
+
+
+@pytest.mark.parametrize("window", [5, 25])
+async def test_setup_rejects_an_out_of_range_history_window(
+    hass: HomeAssistant,
+    window: int,
+) -> None:
+    """The preferences NumberSelector rejects 5 and 25 before the step runs."""
+    result = await _drive_to_preferences_step(hass)
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "preferences"
+
+    with pytest.raises(vol.Invalid):
+        await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={
+                CONF_PREDICTION_ALGORITHM: "weighted_moving_average",
+                CONF_NOTIFICATION_OFFSET_DAYS: 2,
+                CONF_HISTORY_WINDOW: window,
+            },
+        )
 
 
 async def test_sheet_step_rejects_missing_required_column(

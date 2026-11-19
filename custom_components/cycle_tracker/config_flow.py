@@ -18,6 +18,7 @@ from homeassistant.helpers import selector
 from .const import (
     CONF_CYCLE_LENGTH,
     CONF_ENABLE_NOTIFICATIONS,
+    CONF_HISTORY_WINDOW,
     CONF_IMPORT_CACHED,
     CONF_LAST_PERIOD_START,
     CONF_NOTIFICATION_OFFSET_DAYS,
@@ -30,16 +31,20 @@ from .const import (
     CONF_WORKSHEET,
     DEFAULT_CYCLE_LENGTH,
     DEFAULT_ENABLE_NOTIFICATIONS,
+    DEFAULT_HISTORY_WINDOW_NEW_ENTRY,
     DEFAULT_NOTIFICATION_OFFSET_DAYS,
     DEFAULT_NOTIFICATION_TIME,
     DEFAULT_PERIOD_LENGTH,
     DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_PREDICTION_ALGORITHM,
     DOMAIN,
+    MAX_HISTORY_WINDOW,
     MAX_POLL_INTERVAL_MINUTES,
+    MIN_HISTORY_WINDOW,
     MIN_POLL_INTERVAL_MINUTES,
     PREDICTION_ALGORITHMS,
 )
+from .domain.ports import DEFAULT_HISTORY_WINDOW
 from .repository import (
     SheetSchemaError,
     SheetsPeriodRepository,
@@ -364,6 +369,17 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                         )
                     ),
                     vol.Required(
+                        CONF_HISTORY_WINDOW,
+                        default=DEFAULT_HISTORY_WINDOW_NEW_ENTRY,
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_HISTORY_WINDOW,
+                            max=MAX_HISTORY_WINDOW,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
+                        )
+                    ),
+                    vol.Required(
                         CONF_NOTIFICATION_OFFSET_DAYS,
                         default=DEFAULT_NOTIFICATION_OFFSET_DAYS,
                     ): selector.NumberSelector(
@@ -378,6 +394,7 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
             ),
             description_placeholders={
                 "algorithm_help": "Arithmetic Mean: simple average. Weighted Moving Average: recent cycles weighted more heavily.",
+                "history_window_help": "How many recent completed cycles to use for predictions and the windowed average (6 to 24).",
             },
         )
 
@@ -575,6 +592,9 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
             CONF_PREDICTION_ALGORITHM: _setting(
                 entry, CONF_PREDICTION_ALGORITHM, DEFAULT_PREDICTION_ALGORITHM
             ),
+            CONF_HISTORY_WINDOW: _setting(
+                entry, CONF_HISTORY_WINDOW, DEFAULT_HISTORY_WINDOW
+            ),
             CONF_NOTIFICATION_OFFSET_DAYS: _setting(
                 entry,
                 CONF_NOTIFICATION_OFFSET_DAYS,
@@ -627,6 +647,17 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                             options=PREDICTION_ALGORITHMS,
                             translation_key="prediction_algorithm",
                             mode=selector.SelectSelectorMode.DROPDOWN,
+                        )
+                    ),
+                    vol.Required(
+                        CONF_HISTORY_WINDOW,
+                        default=defaults[CONF_HISTORY_WINDOW],
+                    ): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=MIN_HISTORY_WINDOW,
+                            max=MAX_HISTORY_WINDOW,
+                            step=1,
+                            mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
                     vol.Required(

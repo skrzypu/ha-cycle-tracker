@@ -24,12 +24,14 @@ class History:
     """All derived cycles plus the window prediction and statistics share.
 
     ``cycles`` keeps every cycle, including outliers and history before a gap;
+    ``in_range`` keeps every in-bounds cycle across that whole history;
     ``usable`` is the filtered, gap-truncated, most recent window.
     """
 
     cycles: tuple[Cycle, ...]
     usable: tuple[Cycle, ...]
     warnings: tuple[DataWarning, ...]
+    in_range: tuple[Cycle, ...] = ()
 
 
 def build_history(periods: Sequence[Period], config: PredictionConfig) -> History:
@@ -45,12 +47,15 @@ def build_history(periods: Sequence[Period], config: PredictionConfig) -> Histor
     gap_index = _latest_gap_index(cycles, config.gap_days)
     warnings = _collect_warnings(ordered, cycles, gap_index, config)
 
+    in_range = tuple(cycle for cycle in cycles if _within_bounds(cycle, config))
     after_gap = cycles[gap_index + 1 :] if gap_index is not None else cycles
-    in_range = tuple(cycle for cycle in after_gap if _within_bounds(cycle, config))
+    usable_in_range = tuple(
+        cycle for cycle in after_gap if _within_bounds(cycle, config)
+    )
     window = max(config.history_window, 0)
-    usable = in_range[-window:] if window else ()
+    usable = usable_in_range[-window:] if window else ()
 
-    return History(cycles=cycles, usable=usable, warnings=warnings)
+    return History(cycles=cycles, usable=usable, warnings=warnings, in_range=in_range)
 
 
 def _derive_cycles(ordered: Sequence[Period]) -> tuple[Cycle, ...]:

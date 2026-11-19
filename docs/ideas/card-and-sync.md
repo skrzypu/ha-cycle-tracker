@@ -186,3 +186,43 @@ the design and product questions around it.
   per-entry device name, and how do existing IDs migrate? Does the I-010 overlap
   need one shared decision record? What caused the observed area prefix?
 - **Decision:** —
+
+---
+
+### I-019: Dedicated statistics card
+
+- **Status:** parked
+- **Problem:** the shipped `cycle-tracker-card` already has a statistics section
+  (`cycle-tracker-card.js:1257`, `_renderStatistics`) that will now carry two
+  cycle-length averages — windowed and lifetime — alongside average period
+  length and the tracked count. A dedicated statistics surface would give room
+  for the full set (σ, shortest/longest, confidence bands, warnings) without
+  making the glanceable prediction card denser. The bundled dashboard seeds
+  exactly one card per device (`dashboard.py:44-79`), so a second card is a
+  seeding decision as well as a new element.
+- **Idea:** add a second custom element in the same JS file, for example
+  `cycle-tracker-stats-card`, bound by `device_id` like the existing card and
+  registered in `window.customCards`. Offer it as an opt-in card rather than
+  seeding it by default. Revisit when I-015 (charts) is taken up: a chart and
+  the full statistic set belong together, and that is where the extra card
+  earns its keep.
+- **Value:** the prediction card stays calm on a phone; the full statistics
+  set gets its own space and can grow alongside the charts.
+- **Constraints / conflicts:** BDR-0002 allows a second card type in the same
+  file — still one repository, one HACS entry, one version — but seeding two
+  cards per device changes the bundled layout for everyone, so the default
+  stays one card. A second element needs its own tests, spec deltas for
+  `lovelace-card` and `bundled-dashboard`, and layout work owned by
+  `@designer`. Mobile-first, theme variables only and no external assets stay
+  in force from `docs/design/card-brief.md`.
+- **Dependencies:**
+  - I-015 (charts of period and cycle lengths; the natural trigger) — known
+  - I-013 (decided 2026-11-19; windowed versus lifetime averages) — known
+  - `add-lovelace-card` (archived 2026-11-19; the card this would extend) — known
+  - BDR-0002 (the card ships inside the integration) — known
+- **Open questions:** opt-in only or seeded in the bundled dashboard? Does it
+  reuse the device-binding editor or need its own? Which statistics belong on
+  it beyond the two averages?
+- **Decision:** parked on 2026-11-19 in favour of option A for I-013: both
+  averages go into the existing card's statistics section now; revisit with
+  I-015.
