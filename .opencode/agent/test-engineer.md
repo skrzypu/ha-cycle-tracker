@@ -1,7 +1,6 @@
 ---
 description: "Test implementation: pytest for the Home Assistant custom component, unit tests for coordinator calculations, integration tests for config flow / entities / services, pre-commit hook integration"
 mode: subagent
-model: opencode-go/deepseek-v4.1-flash#high
 permissions:
   - action: read
     resource: "*"

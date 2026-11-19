@@ -1,12 +1,12 @@
 {
   "$schema": "https://unpkg.com/oh-my-opencode-slim@latest/oh-my-opencode-slim.schema.json",
-  "preset": "opencode-go-paid",
+  "preset": "opencode-go-free",
   "disabled_agents": ["council", "docs-writer", "github-issues", "tester"],
   "presets": {
-    "opencode-go-free": {
+    "opencode-zen-free": {
       "orchestrator": {
         "model": "opencode/deepseek-v4.1-flash-free",
-        "variant": "medium",
+        "variant": "high",
         "skills": [
           "codemap",
           "concise-planning",
@@ -24,12 +24,12 @@
         "mcps": ["homeassistant"]
       },
       "librarian": {
-        "model": "opencode/glm-5.3-flash-free",
+        "model": "opencode/mimo-v2.6-flash-free",
         "skills": ["find-skills"],
         "mcps": ["websearch", "context7", "grep_app"]
       },
       "explorer": {
-        "model": "opencode/glm-5.3-flash-free",
+        "model": "opencode/mimo-v2.6-flash-free",
         "skills": ["caveman"],
         "mcps": ["homeassistant"]
       },
@@ -41,7 +41,58 @@
       },
       "fixer": {
         "model": "opencode/deepseek-v4.1-flash-free",
+        "variant": "high",
+        "skills": ["test-driven-development", "verification-before-completion", "simplify", "caveman", "deslop"],
+        "mcps": ["homeassistant"]
+      },
+      "observer": {
+        "model": "opencode/nemotron-3.5-super-vl-free",
         "variant": "medium",
+        "skills": [],
+        "mcps": []
+      }
+    },
+    "opencode-go-free": {
+      "orchestrator": {
+        "model": ["opencode-go/hy4-flash-free", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "high",
+        "skills": [
+          "codemap",
+          "concise-planning",
+          "subagent-driven-development",
+          "dispatching-parallel-agents",
+          "executing-plans",
+          "finishing-a-development-branch"
+        ],
+        "mcps": ["homeassistant", "opendesign"]
+      },
+      "oracle": {
+        "model": ["opencode-go/hy4-flash-free", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "high",
+        "skills": ["simplify", "systematic-debugging", "verification-planning", "caveman"],
+        "mcps": ["homeassistant"]
+      },
+      "librarian": {
+        "model": ["opencode-go/hy4-flash-free", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "high",
+        "skills": ["find-skills"],
+        "mcps": ["websearch", "context7", "grep_app"]
+      },
+      "explorer": {
+        "model": ["opencode-go/hy4-flash-free", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "high",
+        "skills": ["caveman"],
+        "mcps": ["homeassistant"]
+      },
+      "designer": {
+        "model": "opencode/nemotron-3.5-super-vl-free",
+        "variant": "medium",
+        "skills": [],
+        "mcps": ["opendesign", "homeassistant"]
+      },
+      "fixer": {
+        "model": ["opencode-go/hy4-flash-free", "opencode/deepseek-v4.1-flash-free"],
+        "variant": "high",
         "skills": ["test-driven-development", "verification-before-completion", "simplify", "caveman", "deslop"],
         "mcps": ["homeassistant"]
       },
@@ -55,7 +106,7 @@
     "opencode-go-paid": {
       "orchestrator": {
         "model": ["opencode-go/deepseek-v4-pro", "opencode-go/deepseek-v4.1-flash", "opencode/deepseek-v4.1-flash-free"],
-        "variant": "medium",
+        "variant": "max",
         "skills": [
           "codemap",
           "concise-planning",
@@ -73,12 +124,12 @@
         "mcps": ["homeassistant"]
       },
       "librarian": {
-        "model": ["opencode-go/qwen3.8-flash", "opencode-go/deepseek-v4.1-flash", "opencode/glm-5.3-flash-free"],
+        "model": ["opencode-go/qwen3.8-flash", "opencode-go/deepseek-v4.1-flash", "opencode/deepseek-v4.1-flash-free"],
         "skills": ["find-skills"],
         "mcps": ["websearch", "context7", "grep_app"]
       },
       "explorer": {
-        "model": ["opencode-go/qwen3.8-flash", "opencode-go/deepseek-v4.1-flash", "opencode/glm-5.3-flash-free"],
+        "model": ["opencode-go/qwen3.8-flash", "opencode-go/deepseek-v4.1-flash", "opencode/deepseek-v4.1-flash-free"],
         "skills": ["caveman"],
         "mcps": ["homeassistant"]
       },
@@ -89,14 +140,20 @@
         "mcps": ["opendesign", "homeassistant"]
       },
       "fixer": {
-        "model": ["opencode-go/deepseek-v4.1-flash", "opencode-go/qwen3.8-flash", "opencode/deepseek-v4.1-flash-free"],
-        "variant": "medium",
+        "model": [
+          {"id": "opencode-go/deepseek-v4.1-flash", "variant": "high"},
+          {"id": "opencode-go/qwen3.8-flash", "variant": "medium"},
+          {"id": "opencode/deepseek-v4.1-flash-free", "variant": "high"}
+        ],
         "skills": ["test-driven-development", "verification-before-completion", "simplify", "caveman", "deslop"],
         "mcps": ["homeassistant"]
       },
       "observer": {
-        "model": ["opencode-go/qwen3.8-flash", "opencode-go/glm-5.3-flash", "opencode/nemotron-3.5-super-vl-free"],
-        "variant": "medium",
+        "model": [
+          {"id": "opencode-go/qwen3.8-flash", "variant": "medium"},
+          {"id": "opencode-go/glm-5.3-flash", "variant": "high"},
+          {"id": "opencode/nemotron-3.5-super-vl-free", "variant": "medium"}
+        ],
         "skills": [],
         "mcps": []
       }

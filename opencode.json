@@ -61,7 +61,7 @@
       "opendesign": {
         "type": "local",
         "command": ["docker", "exec", "-i", "open-design", "node", "/app/apps/daemon/dist/cli.js", "mcp", "--daemon-url", "http://127.0.0.1:7456"],
-        "disabled": true
+        "disabled": false
       }
     }
   }
