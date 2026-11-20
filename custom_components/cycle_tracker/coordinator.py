@@ -17,6 +17,7 @@ from homeassistant.util import dt as dt_util
 from .config_flow import _resolve_service_account_path
 from .const import (
     CONF_CYCLE_LENGTH,
+    CONF_ENABLE_FERTILITY_ESTIMATE,
     CONF_HISTORY_WINDOW,
     CONF_LAST_PERIOD_START,
     CONF_PERIOD_LENGTH,
@@ -26,6 +27,7 @@ from .const import (
     CONF_SPREADSHEET_ID,
     CONF_WORKSHEET,
     DEFAULT_CYCLE_LENGTH,
+    DEFAULT_ENABLE_FERTILITY_ESTIMATE,
     DEFAULT_PERIOD_LENGTH,
     DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_PREDICTION_ALGORITHM,
@@ -506,3 +508,9 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def get_prediction_algorithm(self) -> str:
         """Get prediction algorithm."""
         return self._setting(CONF_PREDICTION_ALGORITHM, DEFAULT_PREDICTION_ALGORITHM)
+
+    def get_enable_fertility_estimate(self) -> bool:
+        """Get the opt-in flag for the fertility estimate entity."""
+        return self._setting(
+            CONF_ENABLE_FERTILITY_ESTIMATE, DEFAULT_ENABLE_FERTILITY_ESTIMATE
+        )

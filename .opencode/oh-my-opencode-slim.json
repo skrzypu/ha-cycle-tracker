@@ -85,8 +85,8 @@
         "mcps": ["homeassistant"]
       },
       "designer": {
-        "model": "opencode/nemotron-3.5-super-vl-free",
-        "variant": "medium",
+        "model": "opencode-go/hy4-flash-free",
+        "variant": "high",
         "skills": [],
         "mcps": ["opendesign", "homeassistant"]
       },

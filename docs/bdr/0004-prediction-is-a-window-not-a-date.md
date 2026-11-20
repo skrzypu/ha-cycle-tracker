@@ -136,6 +136,56 @@ wording above is less specific.
   card (`cycle-tracker-card.js`, `_renderStatistics`); there is no separate card
   for now. Charts remain I-015 and a separate statistics card is parked as I-019.
 
+Refined again on 2026-11-19 in response to a request for an explicit fertility
+estimate, amended in place rather than superseded because the commitment is
+unchanged: the six-day fertile window from BDR-0004 stands, and this only shows
+its uncertainty and makes it opt-in. An extended band is a presentation of that
+same estimate, not a new method and not a new promise. The following rules take
+precedence where the wording above is less specific.
+
+- **Fertile-window uncertainty band (presentation, not method).** The base fertile
+  window is unchanged: ovulation centre −5 through ovulation day, six days. On
+  top of it the product reports an extended band using the same estimate with
+  its uncertainty made explicit: `margin = max(2, ceil(sigma))`, where sigma is
+  the same population σ from `domain/statistics.py` that already feeds period
+  uncertainty and confidence. The band is
+  `[ovulation_center − 5 − margin, ovulation_center + margin]`. This is a
+  presentation of the existing window's uncertainty, not a new method and not a
+  new promise. With irregular cycles the band grows, so the days "outside" it
+  narrow on their own — rather than implying calm the data does not support.
+- **A separate, optional entity.** The estimate is a new entity
+  `fertility_estimate`, not an attribute on existing sensors. Its technical
+  state is stable — `outside_estimated_fertile_window`,
+  `within_estimated_fertile_window`, `unknown` — exposed through
+  `translation_key` so that copy lives in translations, not in the domain.
+  Attributes: the estimated fertile window, the margin band, `margin_days`,
+  `confidence`, `confidence_band`, and `usable_cycle_count`.
+- **Opt-in, off by default.** A new option `enable_fertility_estimate` in the
+  config-entry options (ADR-0011) defaults to `False`. The `_setting` resolver
+  (options → data → default) returns `False` for existing entries without the
+  key: no migration. The toggle lives only in the options flow, never in initial
+  setup. When disabled the entity is not created at all, not reported as
+  `unavailable`. Changing options reloads the entry. The user reaches for the
+  feature, not the other way round.
+- **Display, variant A.** Factual labels (Polish copy):
+  „poza szacowanym oknem płodnym" / „w szacowanym oknie płodnym" / „brak danych".
+  Uncertainty sits in the same frame as the fact, not in a footnote. The section
+  on the card is conditional on the sensor existing, so no empty block is shown.
+- **Copy ban and symmetric disclaimer.** Never „bezpieczny", „dni bezpieczne",
+  „możesz", or „ryzyko zajścia". The disclaimer is symmetric: „Oparty na
+  długościach Twoich cykli szacunek kalendarzowy. Nie jest metodą
+  antykoncepcyjną i nie gwarantuje płodności ani jej braku. Decyzję o
+  współżyciu podejmij samodzielnie, nie opierając się wyłącznie na tym
+  szacunku." The conclusion belongs to the user, not the product.
+- **Boundary of the promise.** This is not a new contraceptive promise and does
+  not replace BDR-0004: the core commitment — window, not a date; fertile window
+  as an estimate, not a guarantee — stands. Because the feature is optional, the
+  product promise is unchanged for users who do not enable it. Opt-in narrows
+  the group exposed to claims but does not immunize the enabled mode: the
+  protection there remains points 4 and 5 above. As context only, not legal
+  advice: software that declares it supports a contraceptive decision may fall
+  under medical-device regulation, which is why the framing matters.
+
 Two consequences deserve prose. On a 28-day cycle the ovulation centre falls on
 **cycle day 15** (day 1 is the start), not day 14 — the 14 counts backwards from
 the next period. And the calendar is a projection of the frozen prediction, not
@@ -241,3 +291,5 @@ available to validate them.
       `openspec/specs/cycle-prediction/spec.md` requirements "Select the last six
       usable completed cycles" and "Report prediction confidence",
       `docs/guide/algorithms.md`, and code docstrings.
+- [ ] Update downstream artifacts for the optional fertility estimate — spec,
+      card section, and translations — without editing this record again.

@@ -46,7 +46,11 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def check(archive: zipfile.ZipFile | tarfile.TarFile, names: set[str], files: list[tuple[Path, str]]) -> None:
+def check(
+    archive: zipfile.ZipFile | tarfile.TarFile,
+    names: set[str],
+    files: list[tuple[Path, str]],
+) -> None:
     missing = set(REQUIRED) - names
     assert not missing, f"missing required entries: {sorted(missing)}"
     assert not any("__pycache__" in n or n.endswith(".pyc") for n in names)
@@ -61,7 +65,6 @@ def check(archive: zipfile.ZipFile | tarfile.TarFile, names: set[str], files: li
 def main() -> None:
     version = json.loads((SRC / "manifest.json").read_text())["version"]
     files = members()
-    names = {name for _, name in files}
     zip_path = OUT / f"ha-cycle-tracker-{version}.zip"
     tar_path = OUT / f"ha-cycle-tracker-{version}.tar.gz"
     note_path = OUT / f"INSTALL_{version}.md"

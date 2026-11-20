@@ -11,6 +11,7 @@ const DEFAULT_ENTITIES = Object.freeze({
   days_until_period: "sensor.cycle_tracker_days_until_period",
   days_until_ovulation: "sensor.cycle_tracker_days_until_ovulation",
   statistics: "sensor.cycle_tracker_statistics",
+  fertility_estimate: "sensor.cycle_tracker_fertility_estimate",
   period_open: "binary_sensor.cycle_tracker_period_open",
 });
 
@@ -28,6 +29,7 @@ const CT_UNIQUE_SUFFIX = Object.freeze({
   days_until_period: "days_until_period",
   days_until_ovulation: "days_until_ovulation",
   statistics: "statistics",
+  fertility_estimate: "fertility_estimate",
   period_open: "period_open",
 });
 
@@ -40,6 +42,7 @@ const ENTITY_LABELS = Object.freeze({
   days_until_period: "Dni do okresu",
   days_until_ovulation: "Dni do owulacji",
   statistics: "Statystyki",
+  fertility_estimate: "Szacunek płodności",
   period_open: "Otwarty okres",
 });
 
@@ -182,6 +185,57 @@ const PHASE_MAP = Object.freeze({
     description: "po owulacji do następnego okresu",
   }),
 });
+
+//: Technical state tokens stay in the domain; all fertility wording lives here.
+const FERTILITY_TEXT = Object.freeze({
+  heading: "Szacunek płodności",
+  state: Object.freeze({
+    outside_estimated_fertile_window: "poza szacowanym oknem płodnym",
+    within_estimated_fertile_window: "w szacowanym oknie płodnym",
+    unknown: "brak danych",
+  }),
+  bandLabel: "pas szacunku",
+  previousBandLabel: "poprzedni pas szacunku",
+  nextBandLabel: "następny pas szacunku",
+  endedLabel: "zakończył się",
+  daysAgo: Object.freeze({
+    singular: "dzień temu",
+    plural: "dni temu",
+  }),
+  marginLabel: "margines",
+  disclaimer:
+    "Oparty na długościach Twoich cykli szacunek kalendarzowy. Nie jest metodą antykoncepcyjną i nie gwarantuje płodności ani jej braku. Decyzję o współżyciu podejmij samodzielnie, nie opierając się wyłącznie na tym szacunku.",
+});
+
+function _formatFertilityBand(band, marginDays) {
+  if (!Array.isArray(band) || band.length !== 2) {
+    return null;
+  }
+  if (typeof band[0] !== "string" || typeof band[1] !== "string") {
+    return null;
+  }
+  const margin =
+    typeof marginDays === "number" && Number.isFinite(marginDays)
+      ? `, ${FERTILITY_TEXT.marginLabel} ${marginDays}`
+      : "";
+  return `${band[0]} — ${band[1]}${margin}`;
+}
+
+function _formatDaysAgo(days) {
+  if (
+    typeof days !== "number" ||
+    !Number.isInteger(days) ||
+    days < 0
+  ) {
+    return null;
+  }
+  // Prosta reguła: 1 (oraz 21, 31, …) → „dzień”, reszta → „dni”.
+  const unit =
+    days === 1 || (days % 10 === 1 && days % 100 !== 11)
+      ? FERTILITY_TEXT.daysAgo.singular
+      : FERTILITY_TEXT.daysAgo.plural;
+  return `${FERTILITY_TEXT.endedLabel} ${days} ${unit}`;
+}
 
 const CARD_STYLES = `
   :host {
@@ -354,6 +408,123 @@ const CARD_STYLES = `
   .date-value.not-tracked {
     font-weight: 400;
     color: var(--secondary-text-color);
+  }
+
+  .fertility-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    border: 1px solid var(--divider-color);
+    border-radius: var(--ha-card-border-radius, 12px);
+    background: var(--secondary-background-color);
+  }
+
+  .fertility-section[hidden] {
+    display: none;
+  }
+
+  .fertility-heading {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--primary-text-color);
+  }
+
+  .fertility-fact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    font-size: 0.925rem;
+    line-height: 1.4;
+  }
+
+  .fertility-state {
+    font-weight: 600;
+    color: var(--primary-color);
+  }
+
+  .fertility-band {
+    color: var(--primary-text-color);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Each gap edge occupies its own line in the outside state. */
+  .fertility-band.fertility-band-edge {
+    flex-basis: 100%;
+  }
+
+  .fertility-state.not-tracked,
+  .fertility-band.not-tracked {
+    font-weight: 400;
+    color: var(--secondary-text-color);
+  }
+
+  .fertility-disclaimer {
+    margin: 0;
+    padding-top: 8px;
+    border-top: 1px solid var(--divider-color);
+    font-size: 0.85rem;
+    line-height: 1.45;
+    color: var(--secondary-text-color);
+  }
+
+  /* Akordeon sekcji płodności — wzorzec na sekcji „Statystyki” (<details>/<summary>). */
+  .fertility-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    font: inherit;
+    font-size: 0.95rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--primary-text-color);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    text-align: left;
+    list-style: none;
+  }
+
+  .fertility-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .fertility-summary:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: -2px;
+  }
+
+  .fertility-summary-icon {
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    line-height: 1;
+    transition: transform 0.2s ease;
+    flex-shrink: 0;
+  }
+
+  .fertility-section[open] > .fertility-summary .fertility-summary-icon {
+    transform: rotate(180deg);
+  }
+
+  .fertility-section[open] > .fertility-summary {
+    border-bottom: 1px solid var(--divider-color);
+    padding-bottom: 8px;
+    margin-bottom: 8px;
+  }
+
+  .fertility-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 0 12px;
   }
 
   .actions-section {
@@ -838,6 +1009,13 @@ class CycleTrackerCard extends HTMLElement {
         <summary class="stats-summary">Statystyki</summary>
         <div class="stats-content" data-ref="statsContent"></div>
       </details>
+
+      <details
+        class="fertility-section"
+        data-field="fertility_estimate"
+        data-ref="fertilitySection"
+        hidden
+      ></details>
     `;
 
     this.shadowRoot.replaceChildren(style, card);
@@ -853,6 +1031,18 @@ class CycleTrackerCard extends HTMLElement {
 
     this._refs.endBtn.addEventListener("click", () => {
       this._handleEndClick();
+    });
+
+    // Akordeon płodności: zsynchronizuj atrybut dostępności z natywnym stanem
+    // <details> po przełączeniu przez użytkownika (klik/Enter/Space).
+    this._refs.fertilitySection.addEventListener("toggle", () => {
+      const summary = this._refs.fertilitySection.querySelector("summary");
+      if (summary) {
+        summary.setAttribute(
+          "aria-expanded",
+          String(this._refs.fertilitySection.open)
+        );
+      }
     });
 
     this._domReady = true;
@@ -1207,6 +1397,7 @@ class CycleTrackerCard extends HTMLElement {
     this._renderActions();
     this._renderStatus();
     this._renderStatistics();
+    this._renderFertility();
   }
 
   _renderActions() {
@@ -1332,6 +1523,115 @@ class CycleTrackerCard extends HTMLElement {
       row.appendChild(valueEl);
       container.appendChild(row);
     }
+  }
+
+  _renderFertility() {
+    if (!this._refs || !this._refs.fertilitySection) {
+      return;
+    }
+    const section = this._refs.fertilitySection;
+    const entityId = this._resolveEntityId("fertility_estimate");
+    const stateObj =
+      entityId && this._hass && this._hass.states
+        ? this._hass.states[entityId] || null
+        : null;
+
+    // The entity is only created when the option is on. Without a bound entity
+    // there is no section at all, never an empty or "unavailable" block.
+    if (!entityId || !stateObj) {
+      section.replaceChildren();
+      section.hidden = true;
+      return;
+    }
+
+    section.hidden = false;
+    section.replaceChildren();
+
+    const summary = document.createElement("summary");
+    summary.className = "fertility-summary";
+    summary.setAttribute("aria-expanded", String(section.open));
+    summary.setAttribute("aria-controls", "fertility-estimate-panel");
+
+    const heading = document.createElement("span");
+    heading.className = "fertility-heading";
+    heading.textContent = FERTILITY_TEXT.heading;
+    summary.appendChild(heading);
+
+    const icon = document.createElement("span");
+    icon.className = "fertility-summary-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = "▾";
+    summary.appendChild(icon);
+
+    const content = document.createElement("div");
+    content.className = "fertility-content";
+    content.id = "fertility-estimate-panel";
+
+    const label = FERTILITY_TEXT.state[stateObj.state];
+    const attrs = stateObj.attributes || {};
+    const isOutside = stateObj.state === "outside_estimated_fertile_window";
+    // "unknown" implies no window and no band, so none is shown beside it.
+    // In "outside" the two gap edges replace the single unlabelled band; a
+    // missing edge produces no line at all rather than an empty row.
+    const band =
+      label && !isOutside && stateObj.state !== "unknown"
+        ? _formatFertilityBand(attrs.margin_band, attrs.margin_days)
+        : null;
+    const gapEdges = isOutside
+      ? [
+          {
+            key: "previous_margin_band",
+            label: FERTILITY_TEXT.previousBandLabel,
+            band: attrs.previous_margin_band,
+            daysAgo: _formatDaysAgo(attrs.previous_band_days_ago),
+          },
+          {
+            key: "next_margin_band",
+            label: FERTILITY_TEXT.nextBandLabel,
+            band: attrs.next_margin_band,
+          },
+        ]
+      : [];
+
+    const fact = document.createElement("div");
+    fact.className = "fertility-fact";
+    fact.setAttribute("data-field", "fertility_state");
+
+    const stateEl = document.createElement("span");
+    stateEl.className = label
+      ? "fertility-state"
+      : "fertility-state not-tracked";
+    stateEl.textContent = label || FERTILITY_TEXT.state.unknown;
+    fact.appendChild(stateEl);
+
+    if (isOutside) {
+      for (const edge of gapEdges) {
+        const formatted = _formatFertilityBand(edge.band, attrs.margin_days);
+        if (!formatted) {
+          continue;
+        }
+        const edgeEl = document.createElement("div");
+        edgeEl.className = "fertility-band fertility-band-edge";
+        edgeEl.setAttribute("data-field", edge.key);
+        const suffix = edge.daysAgo ? `, ${edge.daysAgo}` : "";
+        edgeEl.textContent = `${edge.label}: ${formatted}${suffix}`;
+        fact.appendChild(edgeEl);
+      }
+    } else if (band) {
+      const bandEl = document.createElement("span");
+      bandEl.className = "fertility-band";
+      bandEl.textContent = `${FERTILITY_TEXT.bandLabel}: ${band}`;
+      fact.appendChild(bandEl);
+    }
+    content.appendChild(fact);
+
+    const disclaimer = document.createElement("p");
+    disclaimer.className = "fertility-disclaimer";
+    disclaimer.textContent = FERTILITY_TEXT.disclaimer;
+    content.appendChild(disclaimer);
+
+    section.appendChild(summary);
+    section.appendChild(content);
   }
 }
 

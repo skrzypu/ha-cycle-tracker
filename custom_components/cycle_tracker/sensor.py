@@ -18,17 +18,23 @@ from .const import (
     ATTR_DAYS_LATE,
     ATTR_DAYS_UNTIL_OVULATION,
     ATTR_DAYS_UNTIL_PERIOD,
+    ATTR_ESTIMATED_FERTILE_WINDOW,
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
     ATTR_IS_LATE,
     ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH,
     ATTR_LONGEST_CYCLE,
+    ATTR_MARGIN_BAND,
+    ATTR_MARGIN_DAYS,
+    ATTR_NEXT_MARGIN_BAND,
     ATTR_NEXT_OVULATION_DATE,
     ATTR_NEXT_PERIOD_DATE,
     ATTR_OVULATION_WINDOW_END,
     ATTR_OVULATION_WINDOW_START,
     ATTR_PREDICTED_CYCLE_LENGTH,
     ATTR_PREDICTION_CONFIDENCE,
+    ATTR_PREVIOUS_BAND_DAYS_AGO,
+    ATTR_PREVIOUS_MARGIN_BAND,
     ATTR_SHORTEST_CYCLE,
     ATTR_STD_DEV_CYCLE,
     ATTR_STD_DEV_PERIOD,
@@ -52,18 +58,20 @@ async def async_setup_entry(
     """Set up Cycle Tracker sensors."""
     coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][entry.entry_id]
 
-    async_add_entities(
-        [
-            CycleDaySensor(coordinator, entry),
-            CycleStartDateSensor(coordinator, entry),
-            CyclePhaseSensor(coordinator, entry),
-            NextPeriodDateSensor(coordinator, entry),
-            NextOvulationDateSensor(coordinator, entry),
-            DaysUntilPeriodSensor(coordinator, entry),
-            DaysUntilOvulationSensor(coordinator, entry),
-            CycleStatisticsSensor(coordinator, entry),
-        ]
-    )
+    entities: list[CycleTrackerSensor] = [
+        CycleDaySensor(coordinator, entry),
+        CycleStartDateSensor(coordinator, entry),
+        CyclePhaseSensor(coordinator, entry),
+        NextPeriodDateSensor(coordinator, entry),
+        NextOvulationDateSensor(coordinator, entry),
+        DaysUntilPeriodSensor(coordinator, entry),
+        DaysUntilOvulationSensor(coordinator, entry),
+        CycleStatisticsSensor(coordinator, entry),
+    ]
+    # Disabled by default: no entity at all rather than an unavailable one.
+    if coordinator.get_enable_fertility_estimate():
+        entities.append(FertilityEstimateSensor(coordinator, entry))
+    async_add_entities(entities)
 
 
 class CycleTrackerSensor(CoordinatorEntity[CycleTrackerCoordinator], SensorEntity):
@@ -342,3 +350,43 @@ class CycleStatisticsSensor(CycleTrackerSensor):
                 for warning in prediction.warnings
             ]
         return attributes
+
+
+def _iso_window(window: tuple[date, date] | None) -> tuple[str, str] | None:
+    """Serialize a date window for an entity attribute."""
+    if window is None:
+        return None
+    return window[0].isoformat(), window[1].isoformat()
+
+
+class FertilityEstimateSensor(CycleTrackerSensor):
+    """Sensor for the estimate of the current fertile window and its margin."""
+
+    def __init__(
+        self, coordinator: CycleTrackerCoordinator, entry: ConfigEntry
+    ) -> None:
+        super().__init__(coordinator, entry, "Fertility Estimate", "fertility_estimate")
+        self._attr_icon = "mdi:flower"
+        self._attr_translation_key = "fertility_estimate"
+
+    @property
+    def native_value(self) -> str:
+        """Return the stable technical state token."""
+        return self._snapshot.fertility.state.value
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the base window, the margin band and their provenance."""
+        estimate = self._snapshot.fertility
+        band = estimate.confidence_band
+        return {
+            ATTR_ESTIMATED_FERTILE_WINDOW: _iso_window(estimate.fertile_window),
+            ATTR_MARGIN_BAND: _iso_window(estimate.margin_band),
+            ATTR_PREVIOUS_MARGIN_BAND: _iso_window(estimate.previous_margin_band),
+            ATTR_PREVIOUS_BAND_DAYS_AGO: estimate.previous_band_days_ago,
+            ATTR_NEXT_MARGIN_BAND: _iso_window(estimate.next_margin_band),
+            ATTR_MARGIN_DAYS: estimate.margin_days,
+            ATTR_PREDICTION_CONFIDENCE: estimate.confidence,
+            ATTR_CONFIDENCE_BAND: band.value if band is not None else None,
+            ATTR_USABLE_CYCLE_COUNT: estimate.usable_cycle_count,
+        }

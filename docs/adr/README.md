@@ -19,3 +19,4 @@ Durable technical decisions for this project.
 | [0013](0013-agent-skills-pinned-indexed-reviewed.md) | Agent skills are pinned, indexed and reviewed | accepted | 2026-11-16 |
 | [0014](0014-agent-auditor-verifies-config-truth.md) | An agent auditor periodically verifies that agent and config documentation is still true | accepted | 2026-11-16 |
 | [0015](0015-mcp-access-pre-wired-per-agent-allowlists.md) | MCP access is pre-wired per agent; both servers stay disabled by default | accepted | 2026-11-17 |
+| [0016](0016-spec-changes-bump-patch-version.md) | Each archived OpenSpec change bumps the patch version | accepted | 2026-11-20 |

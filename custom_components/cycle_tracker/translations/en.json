@@ -65,10 +65,14 @@
           "notification_offset_days": "Days before the period to send a notification",
           "enable_notifications": "Enable period and ovulation notifications",
           "notification_time": "Time of day to send notifications",
+          "enable_fertility_estimate": "Show fertility estimate (calendar-based, with an uncertainty band)",
           "spreadsheet_id": "Spreadsheet ID (the long identifier in the sheet's URL)",
           "worksheet": "Worksheet name (e.g. Sheet1)",
           "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)",
           "poll_interval": "How often to check the sheet for changes (minutes)"
+        },
+        "data_description": {
+          "enable_fertility_estimate": "Calendar-based estimate from your cycle lengths. It is not a contraceptive method and does not guarantee fertility or its absence. Make your own decision about intercourse; do not rely solely on this estimate."
         }
       }
     },
@@ -77,6 +81,18 @@
       "sheet_not_found": "Spreadsheet or worksheet not found. Check the IDs and sharing.",
       "invalid_schema": "The worksheet header is missing required columns.",
       "cannot_connect": "Could not connect to Google Sheets. Check the key file path and network."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "fertility_estimate": {
+        "name": "Fertility estimate",
+        "state": {
+          "outside_estimated_fertile_window": "Outside the estimated fertile window",
+          "within_estimated_fertile_window": "Within the estimated fertile window",
+          "unknown": "No data"
+        }
+      }
     }
   },
   "selector": {

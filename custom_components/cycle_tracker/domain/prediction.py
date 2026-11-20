@@ -19,6 +19,7 @@ from datetime import date, timedelta
 from statistics import fmean, pstdev
 
 from .events import CycleEvent, project_events
+from .fertility import FertilityEstimate, fertility_estimate
 from .history import History, build_history
 from .models import CyclePhase, Period, Prediction
 from .ports import PredictionConfig
@@ -205,6 +206,8 @@ class Snapshot:
     statistics: CycleStatistics
     events: tuple[CycleEvent, ...]
     period_open: bool
+    #: Computed unconditionally: the toggle only decides whether it is exposed.
+    fertility: FertilityEstimate
 
 
 def build_snapshot(
@@ -218,13 +221,15 @@ def build_snapshot(
     prediction = predict_from_history(
         periods, config, strategy_name, today, history=history
     )
+    stats = statistics(periods, history, config)
     return Snapshot(
         reference_date=today,
         cycle_start=cycle_start(periods, today),
         prediction=prediction,
         cycle_day=cycle_day(periods, today),
         phase=phase_at(periods, prediction, config, today),
-        statistics=statistics(periods, history, config),
+        statistics=stats,
         events=project_events(prediction, config) if prediction else (),
         period_open=any(period.end is None for period in periods),
+        fertility=fertility_estimate(prediction, stats, today),
     )

@@ -55,7 +55,7 @@ only then promoted.
 | [domain-model.md](domain-model.md) | Domain entities, invariants, identity, ports | decided — ADR-0006 (2026-11-10) |
 | [card-and-sync.md](card-and-sync.md) | Lovelace card design, external data copy (Sheets, Drive), several people per home | mixed — decided (I-002/003/006), exploring (I-001), parked (I-004/005/019), idea (I-008/011) |
 | [period-logging.md](period-logging.md) | Backdating a period start, closing a specific past period, dedup | idea |
-| [safe-days.md](safe-days.md) | Safe days for unprotected sex: today's status, upcoming ranges, confidence | idea |
+| [safe-days.md](safe-days.md) | Safe days for unprotected sex: today's status, upcoming ranges, confidence | decided — BDR-0004 (2026-11-19) |
 | [internationalization.md](internationalization.md) | Card and config flow in more languages, translation loading (i18n) | idea |
 | [update-cadence.md](update-cadence.md) | Coordinator update cadence: daily instead of sub-hourly polling, manual refresh | idea |
 | [prediction-configurability.md](prediction-configurability.md) | Configurable prediction and statistics window (number of cycles used) | decided — I-013 (2026-11-19), BDR-0004 amendment pending |

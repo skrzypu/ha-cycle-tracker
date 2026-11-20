@@ -16,6 +16,7 @@ CONF_HISTORY_WINDOW = "history_window"
 CONF_NOTIFICATION_OFFSET_DAYS = "notification_offset_days"
 CONF_ENABLE_NOTIFICATIONS = "enable_notifications"
 CONF_NOTIFICATION_TIME = "notification_time"
+CONF_ENABLE_FERTILITY_ESTIMATE = "enable_fertility_estimate"
 
 # Google Sheets source-of-truth configuration keys
 CONF_SPREADSHEET_ID = "spreadsheet_id"
@@ -31,6 +32,7 @@ DEFAULT_PREDICTION_ALGORITHM = "weighted_moving_average"
 DEFAULT_NOTIFICATION_OFFSET_DAYS = 2
 DEFAULT_ENABLE_NOTIFICATIONS = False
 DEFAULT_NOTIFICATION_TIME = "08:00"
+DEFAULT_ENABLE_FERTILITY_ESTIMATE = False
 
 # Shared history window (prediction and cycle-length statistics)
 MIN_HISTORY_WINDOW = 6
@@ -76,6 +78,12 @@ ATTR_OVULATION_WINDOW_START = "ovulation_window_start"
 ATTR_OVULATION_WINDOW_END = "ovulation_window_end"
 ATTR_FERTILE_WINDOW_START = "fertile_window_start"
 ATTR_FERTILE_WINDOW_END = "fertile_window_end"
+ATTR_ESTIMATED_FERTILE_WINDOW = "estimated_fertile_window"
+ATTR_MARGIN_BAND = "margin_band"
+ATTR_PREVIOUS_MARGIN_BAND = "previous_margin_band"
+ATTR_PREVIOUS_BAND_DAYS_AGO = "previous_band_days_ago"
+ATTR_NEXT_MARGIN_BAND = "next_margin_band"
+ATTR_MARGIN_DAYS = "margin_days"
 ATTR_IS_LATE = "is_late"
 ATTR_DAYS_LATE = "days_late"
 ATTR_WARNINGS = "warnings"

@@ -17,6 +17,7 @@ from homeassistant.helpers import selector
 
 from .const import (
     CONF_CYCLE_LENGTH,
+    CONF_ENABLE_FERTILITY_ESTIMATE,
     CONF_ENABLE_NOTIFICATIONS,
     CONF_HISTORY_WINDOW,
     CONF_IMPORT_CACHED,
@@ -30,6 +31,7 @@ from .const import (
     CONF_SPREADSHEET_ID,
     CONF_WORKSHEET,
     DEFAULT_CYCLE_LENGTH,
+    DEFAULT_ENABLE_FERTILITY_ESTIMATE,
     DEFAULT_ENABLE_NOTIFICATIONS,
     DEFAULT_HISTORY_WINDOW_NEW_ENTRY,
     DEFAULT_NOTIFICATION_OFFSET_DAYS,
@@ -595,6 +597,9 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
             CONF_HISTORY_WINDOW: _setting(
                 entry, CONF_HISTORY_WINDOW, DEFAULT_HISTORY_WINDOW
             ),
+            CONF_ENABLE_FERTILITY_ESTIMATE: _setting(
+                entry, CONF_ENABLE_FERTILITY_ESTIMATE, DEFAULT_ENABLE_FERTILITY_ESTIMATE
+            ),
             CONF_NOTIFICATION_OFFSET_DAYS: _setting(
                 entry,
                 CONF_NOTIFICATION_OFFSET_DAYS,
@@ -660,6 +665,10 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                             mode=selector.NumberSelectorMode.BOX,
                         )
                     ),
+                    vol.Required(
+                        CONF_ENABLE_FERTILITY_ESTIMATE,
+                        default=defaults[CONF_ENABLE_FERTILITY_ESTIMATE],
+                    ): selector.BooleanSelector(),
                     vol.Required(
                         CONF_NOTIFICATION_OFFSET_DAYS,
                         default=defaults[CONF_NOTIFICATION_OFFSET_DAYS],

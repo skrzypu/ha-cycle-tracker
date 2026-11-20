@@ -65,10 +65,14 @@
           "notification_offset_days": "Ile dni przed okresem wysłać powiadomienie",
           "enable_notifications": "Włącz powiadomienia o okresie i owulacji",
           "notification_time": "Godzina wysyłania powiadomień",
+          "enable_fertility_estimate": "Pokaż szacunek płodności (kalendarzowy z pasem niepewności)",
           "spreadsheet_id": "Identyfikator arkusza (długi identyfikator z adresu URL arkusza)",
           "worksheet": "Nazwa arkusza (np. Sheet1)",
           "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)",
           "poll_interval": "Jak często sprawdzać arkusz pod kątem zmian (minuty)"
+        },
+        "data_description": {
+          "enable_fertility_estimate": "Oparty na długościach Twoich cykli szacunek kalendarzowy. Nie jest metodą antykoncepcyjną i nie gwarantuje płodności ani jej braku. Decyzję o współżyciu podejmij samodzielnie, nie opierając się wyłącznie na tym szacunku."
         }
       }
     },
@@ -77,6 +81,18 @@
       "sheet_not_found": "Nie znaleziono arkusza lub skoroszytu. Sprawdź identyfikatory i udostępnianie.",
       "invalid_schema": "W nagłówku arkusza brakuje wymaganych kolumn.",
       "cannot_connect": "Nie udało się połączyć z Arkuszami Google. Sprawdź ścieżkę do pliku klucza i połączenie sieciowe."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "fertility_estimate": {
+        "name": "Szacunek płodności",
+        "state": {
+          "outside_estimated_fertile_window": "poza szacowanym oknem płodnym",
+          "within_estimated_fertile_window": "w szacowanym oknie płodnym",
+          "unknown": "brak danych"
+        }
+      }
     }
   },
   "selector": {

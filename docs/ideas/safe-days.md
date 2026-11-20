@@ -7,7 +7,7 @@ when are the next safe days" — and how to state the uncertainty honestly.
 
 ### I-009: Dni bezpieczne dla seksu bez zabezpieczenia — status dnia, prognoza i pewność
 
-- **Status:** idea
+- **Status:** decided — recorded in [BDR-0004](../bdr/0004-prediction-is-a-window-not-a-date.md) on 2026-11-19
 - **Problem:** Produkt pokazuje okno płodne i wartość pewności, ale nie odpowiada
   wprost na pytanie, które użytkownik faktycznie zadaje: czy dzisiaj można
   uprawiać seks bez zabezpieczenia i kiedy wypadną takie dni. Użytkownik musi sam
@@ -56,4 +56,4 @@ when are the next safe days" — and how to state the uncertainty honestly.
   dane (temperatura, śluz), żeby wynik był metodą antykoncepcyjną, czy funkcja
   pozostaje wyłącznie szacunkiem kalendarzowym? Jaki minimalny staż danych
   uprawnia do pokazywania statusu dnia?
-- **Decision:** —
+- **Decision:** recorded in [BDR-0004](../bdr/0004-prediction-is-a-window-not-a-date.md) (poprawka „Refined again on 2026-11-19"). Wybrano wariant surowego szacunku płodności zamiast obietnicy antykoncepcyjnej: 6-dniowe okno zostaje, produkt pokazuje rozszerzony pas z wyliczonym marginesem `max(2, ceil(sigma))` w osobnym, opcjonalnym sensorze `fertility_estimate` (domyślnie wyłączony, przełącznik tylko w options, brak encji gdy wyłączony). Copy factualne — bez „bezpieczny"/"możesz", z niepewnością obok faktu i symetrycznym zastrzeżeniem, że szacunek nie gwarantuje płodności ani jej braku. Nowy BDR dotyczący obietnicy antykoncepcyjnej nie jest potrzebny; wdrożenie w specyfikacji, karcie i translations pozostaje do zaplanowania jako osobna zmiana.
