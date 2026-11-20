@@ -22,6 +22,8 @@ from custom_components.cycle_tracker.const import (
     ATTR_AVERAGE_CYCLE_LENGTH,
     ATTR_PREDICTION_CONFIDENCE,
     ATTR_USABLE_CYCLE_COUNT,
+    DOMAIN,
+    SERVICE_REFRESH,
 )
 from custom_components.cycle_tracker.domain.models import legacy_period_id
 
@@ -183,13 +185,12 @@ async def test_external_sheet_edit_is_picked_up_on_refresh(
     frozen_today: date,
     state_of,
 ) -> None:
-    """A row edited or deleted in the sheet drives the next refresh.
+    """A row edited or deleted in the sheet drives a manual refresh.
 
     The sheet is the source of truth: after a manual edit (a row deleted here),
-    the next poll must follow the sheet instead of the snapshot taken at setup.
+    the refresh service must follow the sheet instead of the snapshot taken at
+    setup. There is no poll interval to wait for.
     """
-    from custom_components.cycle_tracker.const import DOMAIN
-
     sheet_emulator.seed(_sheet_rows())
 
     assert await hass.config_entries.async_setup(config_entry.entry_id)
@@ -202,7 +203,7 @@ async def test_external_sheet_edit_is_picked_up_on_refresh(
 
         # External edit: drop the oldest period row from the sheet.
         sheet_emulator.seed(_sheet_rows()[1:])
-        await coordinator.async_refresh()
+        await hass.services.async_call(DOMAIN, SERVICE_REFRESH, {}, blocking=True)
         await hass.async_block_till_done()
 
         remaining = coordinator.get_domain_periods()

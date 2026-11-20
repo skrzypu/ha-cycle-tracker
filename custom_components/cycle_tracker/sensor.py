@@ -1,6 +1,6 @@
 """Sensor entities for Cycle Tracker."""
 
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
@@ -8,6 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from .const import (
     ATTR_AVERAGE_CYCLE_LENGTH,
@@ -22,6 +23,8 @@ from .const import (
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
     ATTR_IS_LATE,
+    ATTR_IS_STALE,
+    ATTR_LAST_SYNC,
     ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH,
     ATTR_LONGEST_CYCLE,
     ATTR_MARGIN_BAND,
@@ -308,6 +311,18 @@ class DaysUntilOvulationSensor(CycleTrackerSensor):
         }
 
 
+def _is_stale(last_sync: datetime | None) -> bool:
+    """Return True when the last Sheet read is older than yesterday.
+
+    Comparing local calendar days tolerates the 23- and 25-hour DST days and a
+    single missed midnight tick.
+    """
+    if last_sync is None:
+        return True
+    yesterday = dt_util.now().date() - timedelta(days=1)
+    return dt_util.as_local(last_sync).date() < yesterday
+
+
 class CycleStatisticsSensor(CycleTrackerSensor):
     """Sensor for cycle statistics."""
 
@@ -324,7 +339,12 @@ class CycleStatisticsSensor(CycleTrackerSensor):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Return the windowed statistics, confidence and warnings."""
+        """Return statistics, freshness and warnings.
+
+        ``last_sync`` is the last successful contact with the Sheet: the
+        midnight read, a manual refresh, or a re-read after a successful write.
+        ``is_stale`` compares its local date with yesterday.
+        """
         snapshot = self._snapshot
         statistics = snapshot.statistics
         band = statistics.confidence_band
@@ -342,6 +362,11 @@ class CycleStatisticsSensor(CycleTrackerSensor):
             ATTR_PREDICTION_CONFIDENCE: statistics.confidence,
             ATTR_CONFIDENCE_BAND: band.value if band is not None else None,
         }
+        last_sync = self.coordinator.last_sync
+        attributes[ATTR_LAST_SYNC] = (
+            last_sync.isoformat() if last_sync is not None else None
+        )
+        attributes[ATTR_IS_STALE] = _is_stale(last_sync)
         prediction = snapshot.prediction
         if prediction is not None:
             attributes[ATTR_USABLE_CYCLE_COUNT] = prediction.usable_cycle_count

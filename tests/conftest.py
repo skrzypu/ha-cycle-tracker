@@ -88,17 +88,16 @@ def sheet_settings(service_account_key: str) -> dict[str, Any]:
     the sheet settings and running unconfigured.
     """
     from custom_components.cycle_tracker.const import (
-        CONF_POLL_INTERVAL,
         CONF_SERVICE_ACCOUNT_FILE,
         CONF_SPREADSHEET_ID,
         CONF_WORKSHEET,
     )
 
+    # No poll_interval: the setting was removed from the flows and the schema.
     return {
         CONF_SPREADSHEET_ID: "1AbCdEfGhIjKlMnOpQrStUvWxYz0123456789-_",
         CONF_WORKSHEET: "Sheet1",
         CONF_SERVICE_ACCOUNT_FILE: service_account_key,
-        CONF_POLL_INTERVAL: 5,
     }
 
 
@@ -281,6 +280,30 @@ async def coordinator(
     await coordinator.async_shutdown()
     assert await hass.config_entries.async_unload(config_entry.entry_id)
     await hass.async_block_till_done()
+
+
+@pytest.fixture
+def sheet_reads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> Callable[[CycleTrackerCoordinator], dict[str, int]]:
+    """Attach a counter to a coordinator's repository read method.
+
+    Unlike counting HTTP calls this counts only coordinator reads, so a write's
+    own up-front sheet read is not mistaken for the post-write re-read.
+    """
+
+    def _attach(coordinator: CycleTrackerCoordinator) -> dict[str, int]:
+        counter = {"reads": 0}
+        original = coordinator._repo.read_all
+
+        async def _counted() -> list[Any]:
+            counter["reads"] += 1
+            return await original()
+
+        monkeypatch.setattr(coordinator._repo, "read_all", _counted)
+        return counter
+
+    return _attach
 
 
 @pytest.fixture

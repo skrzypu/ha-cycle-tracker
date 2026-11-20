@@ -7,7 +7,7 @@ force a recomputation on demand instead of waiting for the next tick.
 
 ### I-012: Daily update instead of sub-hourly polling, plus a forced refresh
 
-- **Status:** idea
+- **Status:** decided
 - **Problem:** cycle data moves on a day scale — dates, the phase and the
   "days until" values roll over at midnight, which the code already reflects by
   keying the cached snapshot to the local date (`coordinator.py:425-433`) — yet
@@ -69,4 +69,9 @@ force a recomputation on demand instead of waiting for the next tick.
   coordinator timer or something the calendar/platform layer drives? Service
   plus button, or only the service? Should the button be disabled by default or
   marked diagnostic?
-- **Decision:** —
+- **Decision:** promoted to the `daily-cadence-and-manual-refresh` change
+  (2026-11-20): one daily read at local midnight, a `refresh` service plus
+  button, an immediate re-read after every write, and a `last_sync` attribute
+  on the statistics sensor. The poll-interval setting is removed. Open
+  questions on availability thresholds and the diagnostics surface are left to
+  I-017.

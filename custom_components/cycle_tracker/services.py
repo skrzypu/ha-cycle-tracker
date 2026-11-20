@@ -27,6 +27,7 @@ from .const import (
     DOMAIN,
     SERVICE_LOG_END,
     SERVICE_LOG_START,
+    SERVICE_REFRESH,
 )
 from .coordinator import CycleTrackerCoordinator
 
@@ -54,6 +55,8 @@ SERVICE_LOG_END_SCHEMA = vol.Schema(
         **_TARGET_FIELDS,
     }
 )
+
+SERVICE_REFRESH_SCHEMA = vol.Schema({**_TARGET_FIELDS})
 
 
 async def _async_resolve_coordinator(
@@ -102,7 +105,7 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         flow_intensity = call.data["flow_intensity"]
 
         await coordinator.async_log_start(start, flow_intensity)
-        coordinator.async_set_updated_data(coordinator._data)
+        await coordinator.async_request_refresh()
 
         return {
             "success": True,
@@ -116,8 +119,13 @@ async def async_setup_services(hass: HomeAssistant) -> None:
 
         result = await coordinator.async_log_end(end)
         if result["success"]:
-            coordinator.async_set_updated_data(coordinator._data)
+            await coordinator.async_request_refresh()
         return result
+
+    async def handle_refresh(call: ServiceCall) -> None:
+        """Handle a refresh service call."""
+        coordinator = await _async_resolve_coordinator(hass, call)
+        await coordinator.async_request_refresh()
 
     hass.services.async_register(
         DOMAIN,
@@ -135,8 +143,16 @@ async def async_setup_services(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.OPTIONAL,
     )
 
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REFRESH,
+        handle_refresh,
+        schema=SERVICE_REFRESH_SCHEMA,
+    )
+
 
 async def async_unload_services(hass: HomeAssistant) -> None:
     """Unload services."""
     hass.services.async_remove(DOMAIN, SERVICE_LOG_START)
     hass.services.async_remove(DOMAIN, SERVICE_LOG_END)
+    hass.services.async_remove(DOMAIN, SERVICE_REFRESH)

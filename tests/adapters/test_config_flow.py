@@ -26,7 +26,6 @@ from custom_components.cycle_tracker.const import (
     CONF_NOTIFICATION_OFFSET_DAYS,
     CONF_NOTIFICATION_TIME,
     CONF_PERIOD_LENGTH,
-    CONF_POLL_INTERVAL,
     CONF_PREDICTION_ALGORITHM,
     CONF_SERVICE_ACCOUNT_FILE,
     CONF_SPREADSHEET_ID,
@@ -109,8 +108,39 @@ async def test_options_dialog_opens_prefilled_with_the_values_in_force(
         CONF_SPREADSHEET_ID: entry_data[CONF_SPREADSHEET_ID],
         CONF_WORKSHEET: entry_data[CONF_WORKSHEET],
         CONF_SERVICE_ACCOUNT_FILE: entry_data[CONF_SERVICE_ACCOUNT_FILE],
-        CONF_POLL_INTERVAL: entry_data[CONF_POLL_INTERVAL],
     }
+
+
+async def test_options_dialog_does_not_offer_poll_interval(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    coordinator: CycleTrackerCoordinator,
+) -> None:
+    """The options form has no poll-interval field to prefill or submit."""
+    result = await hass.config_entries.options.async_init(config_entry.entry_id)
+
+    assert result["type"] is FlowResultType.FORM
+    fields = {str(marker.schema) for marker in result["data_schema"].schema}
+    assert "poll_interval" not in fields
+
+
+async def test_an_entry_with_a_stale_poll_interval_key_still_loads(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+    config_entry_data: dict[str, Any],
+) -> None:
+    """An existing entry that kept the removed key loads with no polling."""
+    hass.config_entries.async_update_entry(
+        config_entry, data={**config_entry_data, "poll_interval": 5}
+    )
+
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][config_entry.entry_id]
+    assert coordinator.update_interval is None
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
 
 
 async def test_options_dialog_prefers_saved_options_over_setup_data(

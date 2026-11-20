@@ -11,14 +11,14 @@ entry is in the state Home Assistant's first refresh expects.
 
 ### Requirement: Release resources on unload
 
-The system SHALL stop the coordinator's periodic refresh and release its
-scheduled callbacks when the config entry is unloaded, and SHALL remove the
-coordinator from the integration's runtime data.
+The system SHALL stop the coordinator and release its scheduled midnight timer
+and any pending refresh callbacks when the config entry is unloaded, and SHALL
+remove the coordinator from the integration's runtime data.
 
 #### Scenario: Unload stops the update timer
 
 - **WHEN** the config entry is unloaded
-- **THEN** the coordinator is shut down and no refresh remains scheduled
+- **THEN** the coordinator is shut down, no midnight timer remains registered and no refresh remains scheduled
 
 #### Scenario: Unload clears runtime data
 

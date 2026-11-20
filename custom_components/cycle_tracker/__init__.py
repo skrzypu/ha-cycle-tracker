@@ -252,6 +252,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Cycle Tracker from a config entry."""
     coordinator = CycleTrackerCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
+    coordinator.async_register_midnight_refresh()
 
     hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
 

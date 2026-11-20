@@ -13,7 +13,6 @@ from homeassistant.helpers.storage import Store
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.cycle_tracker.const import (
-    CONF_POLL_INTERVAL,
     CONF_SERVICE_ACCOUNT_FILE,
     CONF_SPREADSHEET_ID,
     CONF_WORKSHEET,
@@ -34,7 +33,6 @@ def _sheet_entry_data(key_path: str) -> dict[str, Any]:
         CONF_SPREADSHEET_ID: "sheet1",
         CONF_WORKSHEET: "Sheet1",
         CONF_SERVICE_ACCOUNT_FILE: key_path,
-        CONF_POLL_INTERVAL: 5,
     }
 
 

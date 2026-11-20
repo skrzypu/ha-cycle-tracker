@@ -32,8 +32,7 @@
         "data": {
           "spreadsheet_id": "Spreadsheet ID (the long identifier in the sheet's URL)",
           "worksheet": "Worksheet name (tab). A new Google Sheet names its first tab Sheet1 — or Arkusz1 in a Polish-language account.",
-          "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)",
-          "poll_interval": "How often to check the sheet for changes (minutes)"
+          "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)"
         }
       },
       "import_offer": {
@@ -68,8 +67,7 @@
           "enable_fertility_estimate": "Show fertility estimate (calendar-based, with an uncertainty band)",
           "spreadsheet_id": "Spreadsheet ID (the long identifier in the sheet's URL)",
           "worksheet": "Worksheet name (e.g. Sheet1)",
-          "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)",
-          "poll_interval": "How often to check the sheet for changes (minutes)"
+          "service_account_file": "Service account key file path (inside your config directory, e.g. service_account.json)"
         },
         "data_description": {
           "enable_fertility_estimate": "Calendar-based estimate from your cycle lengths. It is not a contraceptive method and does not guarantee fertility or its absence. Make your own decision about intercourse; do not rely solely on this estimate."

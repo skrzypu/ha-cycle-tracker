@@ -102,6 +102,13 @@ def log_period(
 
         await hass.async_block_till_done()
 
+        # Several service writes in quick succession are collapsed by the
+        # coordinator's 10s refresh debouncer, so the final publish has not
+        # happened yet. Force that re-read before tests observe entity states.
+        coordinator = hass.data[DOMAIN][started_entry.entry_id]
+        await coordinator.async_refresh()
+        await hass.async_block_till_done()
+
     return _log_period
 
 

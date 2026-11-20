@@ -5,7 +5,12 @@ from homeassistant.const import Platform
 DOMAIN = "cycle_tracker"
 
 # Platforms
-PLATFORMS = [Platform.SENSOR, Platform.CALENDAR, Platform.BINARY_SENSOR]
+PLATFORMS = [
+    Platform.SENSOR,
+    Platform.CALENDAR,
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+]
 
 # Configuration keys
 CONF_CYCLE_LENGTH = "cycle_length"
@@ -22,7 +27,6 @@ CONF_ENABLE_FERTILITY_ESTIMATE = "enable_fertility_estimate"
 CONF_SPREADSHEET_ID = "spreadsheet_id"
 CONF_WORKSHEET = "worksheet"
 CONF_SERVICE_ACCOUNT_FILE = "service_account_file"
-CONF_POLL_INTERVAL = "poll_interval"
 CONF_IMPORT_CACHED = "import_cached_periods"
 
 # Default values
@@ -87,6 +91,8 @@ ATTR_MARGIN_DAYS = "margin_days"
 ATTR_IS_LATE = "is_late"
 ATTR_DAYS_LATE = "days_late"
 ATTR_WARNINGS = "warnings"
+ATTR_LAST_SYNC = "last_sync"
+ATTR_IS_STALE = "is_stale"
 
 # Cycle phases
 CYCLE_PHASE_MENSTRUAL = "menstrual"
@@ -104,6 +110,7 @@ CYCLE_PHASES = [
 # Services
 SERVICE_LOG_START = "log_start"
 SERVICE_LOG_END = "log_end"
+SERVICE_REFRESH = "refresh"
 
 # Events
 EVENT_PERIOD_START = f"{DOMAIN}_period_start"
@@ -113,11 +120,6 @@ EVENT_NEXT_PERIOD = f"{DOMAIN}_next_period"
 
 # Update interval (hours) — kept for compatibility; new code uses poll interval
 DEFAULT_UPDATE_INTERVAL_HOURS = 6
-
-# Google Sheets poll interval (minutes)
-DEFAULT_POLL_INTERVAL_MINUTES = 5
-MIN_POLL_INTERVAL_MINUTES = 1
-MAX_POLL_INTERVAL_MINUTES = 60
 
 # Storage
 STORAGE_KEY = f"{DOMAIN}_data"

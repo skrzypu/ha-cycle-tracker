@@ -25,7 +25,6 @@ from .const import (
     CONF_NOTIFICATION_OFFSET_DAYS,
     CONF_NOTIFICATION_TIME,
     CONF_PERIOD_LENGTH,
-    CONF_POLL_INTERVAL,
     CONF_PREDICTION_ALGORITHM,
     CONF_SERVICE_ACCOUNT_FILE,
     CONF_SPREADSHEET_ID,
@@ -37,13 +36,10 @@ from .const import (
     DEFAULT_NOTIFICATION_OFFSET_DAYS,
     DEFAULT_NOTIFICATION_TIME,
     DEFAULT_PERIOD_LENGTH,
-    DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_PREDICTION_ALGORITHM,
     DOMAIN,
     MAX_HISTORY_WINDOW,
-    MAX_POLL_INTERVAL_MINUTES,
     MIN_HISTORY_WINDOW,
-    MIN_POLL_INTERVAL_MINUTES,
     PREDICTION_ALGORITHMS,
 )
 from .domain.ports import DEFAULT_HISTORY_WINDOW
@@ -134,11 +130,6 @@ def _normalize_spreadsheet_id(raw: str) -> str | None:
     if not _SHEET_ID_RE.fullmatch(value):
         return None
     return value
-
-
-def _clamp_poll_interval(value: int) -> int:
-    """Clamp the poll interval to the supported 1–60 minute range."""
-    return max(MIN_POLL_INTERVAL_MINUTES, min(MAX_POLL_INTERVAL_MINUTES, int(value)))
 
 
 async def _async_validate_sheet(
@@ -269,18 +260,6 @@ def _sheet_schema(
             CONF_SERVICE_ACCOUNT_FILE,
             default=defaults.get(CONF_SERVICE_ACCOUNT_FILE, ""),
         ): str,
-        vol.Required(
-            CONF_POLL_INTERVAL,
-            default=defaults.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_MINUTES),
-        ): selector.NumberSelector(
-            selector.NumberSelectorConfig(
-                min=MIN_POLL_INTERVAL_MINUTES,
-                max=MAX_POLL_INTERVAL_MINUTES,
-                step=1,
-                unit_of_measurement="minutes",
-                mode=selector.NumberSelectorMode.BOX,
-            )
-        ),
     }
     if include_import:
         fields[
@@ -445,8 +424,6 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                 )
                 errors["base"] = "invalid_spreadsheet_id"
             else:
-                poll_interval = _clamp_poll_interval(user_input[CONF_POLL_INTERVAL])
-
                 result = await _async_validate_sheet(
                     self.hass,
                     spreadsheet_id,
@@ -462,7 +439,6 @@ class CycleTrackerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):  # type:
                         CONF_SPREADSHEET_ID: spreadsheet_id,
                         CONF_WORKSHEET: worksheet,
                         CONF_SERVICE_ACCOUNT_FILE: service_account_file,
-                        CONF_POLL_INTERVAL: poll_interval,
                     }
                     if result.data_rows == 0:
                         cached = await _async_local_cached_periods(self.hass)
@@ -568,9 +544,6 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                     CONF_SPREADSHEET_ID: spreadsheet_id,
                     CONF_WORKSHEET: worksheet,
                     CONF_SERVICE_ACCOUNT_FILE: service_account_file,
-                    CONF_POLL_INTERVAL: _clamp_poll_interval(
-                        user_input[CONF_POLL_INTERVAL]
-                    ),
                 }
                 result = await _async_validate_sheet(
                     self.hass,
@@ -614,9 +587,6 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
             CONF_SPREADSHEET_ID: _setting(entry, CONF_SPREADSHEET_ID, ""),
             CONF_WORKSHEET: _setting(entry, CONF_WORKSHEET, "Sheet1"),
             CONF_SERVICE_ACCOUNT_FILE: _setting(entry, CONF_SERVICE_ACCOUNT_FILE, ""),
-            CONF_POLL_INTERVAL: _setting(
-                entry, CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_MINUTES
-            ),
         }
         return self.async_show_form(
             step_id="init",
@@ -700,18 +670,6 @@ class CycleTrackerOptionsFlow(config_entries.OptionsFlow):
                         CONF_SERVICE_ACCOUNT_FILE,
                         default=defaults[CONF_SERVICE_ACCOUNT_FILE],
                     ): str,
-                    vol.Required(
-                        CONF_POLL_INTERVAL,
-                        default=defaults[CONF_POLL_INTERVAL],
-                    ): selector.NumberSelector(
-                        selector.NumberSelectorConfig(
-                            min=MIN_POLL_INTERVAL_MINUTES,
-                            max=MAX_POLL_INTERVAL_MINUTES,
-                            step=1,
-                            unit_of_measurement="minutes",
-                            mode=selector.NumberSelectorMode.BOX,
-                        )
-                    ),
                 }
             ),
             errors=errors,

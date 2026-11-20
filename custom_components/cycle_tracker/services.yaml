@@ -38,3 +38,10 @@ log_end:
       required: true
       selector:
         date: {}
+
+refresh:
+  name: "Refresh"
+  description: "Re-read the configured Google Sheet now"
+  target:
+    entity:
+      integration: cycle_tracker

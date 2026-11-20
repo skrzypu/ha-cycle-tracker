@@ -7,8 +7,10 @@ a stand-in call object would never exercise either step.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date, timedelta
 from typing import Any
+from unittest.mock import AsyncMock, Mock, patch
 from uuid import UUID
 
 import pytest
@@ -24,6 +26,7 @@ from custom_components.cycle_tracker.const import (
     DOMAIN,
     SERVICE_LOG_END,
     SERVICE_LOG_START,
+    SERVICE_REFRESH,
 )
 from custom_components.cycle_tracker.coordinator import CycleTrackerCoordinator
 
@@ -60,26 +63,258 @@ async def _call_service(
     return response
 
 
-async def test_no_service_is_registered_for_the_history_window(
+async def test_only_the_expected_services_are_registered(
     hass: HomeAssistant,
     coordinator: CycleTrackerCoordinator,
 ) -> None:
-    """The window is settings-only: no third service is added to the domain."""
+    """The domain exposes exactly log_start, log_end and refresh."""
     assert set(hass.services.async_services()[DOMAIN]) == {
         SERVICE_LOG_START,
         SERVICE_LOG_END,
+        SERVICE_REFRESH,
     }
+
+
+async def test_refresh_without_target_rereads_the_sheet(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+) -> None:
+    """With one entry, a targetless refresh performs exactly one sheet read."""
+    reads = sheet_reads(coordinator)
+
+    await hass.services.async_call(DOMAIN, SERVICE_REFRESH, {}, blocking=True)
+    await hass.async_block_till_done()
+
+    assert reads["reads"] == 1
+
+
+async def test_refresh_with_entity_target_rereads_the_sheet(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+) -> None:
+    """A Cycle Tracker entity target selects the entry to re-read."""
+    reads = sheet_reads(coordinator)
+
+    await hass.services.async_call(
+        DOMAIN,
+        SERVICE_REFRESH,
+        {},
+        target={"entity_id": CYCLE_DAY_ENTITY},
+        blocking=True,
+    )
+    await hass.async_block_till_done()
+
+    assert reads["reads"] == 1
+
+
+async def test_refresh_rejects_foreign_target(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+) -> None:
+    """A target with no Cycle Tracker entity is rejected without a read."""
+    hass.states.async_set(FOREIGN_ENTITY, "on")
+    reads = sheet_reads(coordinator)
+
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            SERVICE_REFRESH,
+            {},
+            target={"entity_id": FOREIGN_ENTITY},
+            blocking=True,
+        )
+    await hass.async_block_till_done()
+
+    assert reads["reads"] == 0
+
+
+async def test_refresh_without_target_rejects_ambiguous_entries(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_settings: dict[str, Any],
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+) -> None:
+    """Two configured entries make a targetless refresh ambiguous."""
+    second_entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={**_entry_data(), **sheet_settings},
+        unique_id="second-cycle-tracker",
+        title="Cycle Tracker",
+    )
+    second_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(second_entry.entry_id)
+    await hass.async_block_till_done()
+
+    second_coordinator: CycleTrackerCoordinator = hass.data[DOMAIN][
+        second_entry.entry_id
+    ]
+    reads = sheet_reads(coordinator)
+    second_reads = sheet_reads(second_coordinator)
+    try:
+        with pytest.raises(ServiceValidationError):
+            await hass.services.async_call(DOMAIN, SERVICE_REFRESH, {}, blocking=True)
+        await hass.async_block_till_done()
+
+        assert reads["reads"] == 0
+        assert second_reads["reads"] == 0
+    finally:
+        await second_coordinator.async_shutdown()
+        assert await hass.config_entries.async_unload(second_entry.entry_id)
+        await hass.async_block_till_done()
+
+
+async def test_unload_removes_the_refresh_service(
+    hass: HomeAssistant,
+    config_entry: MockConfigEntry,
+) -> None:
+    """Unload unregisters refresh along with the logging services."""
+    assert await hass.config_entries.async_setup(config_entry.entry_id)
+    await hass.async_block_till_done()
+    assert SERVICE_REFRESH in hass.services.async_services()[DOMAIN]
+
+    assert await hass.config_entries.async_unload(config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert SERVICE_REFRESH not in hass.services.async_services().get(DOMAIN, {})
+
+
+async def test_log_start_rereads_the_sheet_and_publishes_once(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+    frozen_today: date,
+) -> None:
+    """A successful start write re-reads the sheet and notifies once."""
+    reads = sheet_reads(coordinator)
+    listener = Mock()
+    unsub_listener = coordinator.async_add_listener(listener)
+
+    response = await _call_service(hass, SERVICE_LOG_START, {"date": frozen_today})
+    await hass.async_block_till_done()
+
+    assert response["success"] is True
+    assert reads["reads"] == 1
+    listener.assert_called_once()
+    unsub_listener()
+
+
+async def test_log_end_rereads_the_sheet_and_publishes_once(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_emulator: Any,
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+    frozen_today: date,
+) -> None:
+    """A successful end write re-reads the sheet and notifies once."""
+    start = frozen_today - timedelta(days=5)
+    # Seed the open row in the sheet and load it directly: a preceding service
+    # write would leave the coordinator's 10s refresh debouncer armed.
+    sheet_emulator.seed(
+        [
+            [
+                "12345678-1234-5678-1234-567812345678",
+                start.isoformat(),
+                start.isoformat(),  # end == start means still open
+                "medium",
+                "",
+                "",
+            ]
+        ]
+    )
+    await coordinator.async_refresh()
+
+    reads = sheet_reads(coordinator)
+    listener = Mock()
+    unsub_listener = coordinator.async_add_listener(listener)
+
+    response = await _call_service(
+        hass, SERVICE_LOG_END, {"date": start + timedelta(days=3)}
+    )
+    await hass.async_block_till_done()
+
+    assert response["success"] is True
+    assert reads["reads"] == 1
+    listener.assert_called_once()
+    unsub_listener()
+
+
+async def test_failed_write_requests_no_reread(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_reads: Callable[[CycleTrackerCoordinator], dict[str, int]],
+    frozen_today: date,
+) -> None:
+    """A refused end leaves the sheet unread and last_sync unchanged."""
+    reads = sheet_reads(coordinator)
+    sync_before = coordinator.last_sync
+
+    response = await _call_service(hass, SERVICE_LOG_END, {"date": frozen_today})
+    await hass.async_block_till_done()
+
+    assert response["success"] is False
+    assert reads["reads"] == 0
+    assert coordinator.last_sync == sync_before
+
+
+async def test_last_sync_updates_only_after_a_successful_reread(
+    hass: HomeAssistant,
+    coordinator: CycleTrackerCoordinator,
+    sheet_emulator: Any,
+    freezer: Any,
+    frozen_today: date,
+) -> None:
+    """A failed re-read after a write keeps the previous last_sync."""
+    initial_sync = coordinator.last_sync
+    assert initial_sync is not None
+    freezer.move_to("2026-11-13 12:05:00")
+
+    with patch.object(
+        coordinator._repo, "read_all", AsyncMock(side_effect=RuntimeError("boom"))
+    ):
+        response = await _call_service(hass, SERVICE_LOG_START, {"date": frozen_today})
+        await hass.async_block_till_done()
+
+    assert response["success"] is True
+    assert any(row[1] == frozen_today.isoformat() for row in sheet_emulator.rows)
+    assert coordinator.last_sync == initial_sync
+
+    # A direct successful re-read (the same path the service requests) updates
+    # the timestamp; the debouncer would defer a second service request here.
+    await coordinator.async_refresh()
+
+    assert coordinator.last_sync is not None
+    assert coordinator.last_sync > initial_sync
 
 
 async def test_log_start_without_target_records_open_period(
     hass: HomeAssistant,
     coordinator: CycleTrackerCoordinator,
+    sheet_emulator: Any,
     frozen_today: date,
     period_row,
 ) -> None:
-    """A targetless call applies to the only entry and leaves the period open."""
-    coordinator.add_period(period_row(frozen_today - timedelta(days=60), length=3))
-    coordinator.async_set_updated_data(coordinator._data)
+    """A targetless call applies to the only entry and leaves the period open.
+
+    History is seeded in the sheet, not only in memory, because a successful
+    write now re-reads the sheet as its source of truth.
+    """
+    closed = period_row(frozen_today - timedelta(days=60), length=3)
+    sheet_emulator.seed(
+        [
+            [
+                closed["period_id"],
+                closed["start_date"],
+                closed["end_date"],
+                closed["flow_intensity"],
+                "",
+                "",
+            ]
+        ]
+    )
+    await coordinator.async_refresh()
     closed_average = coordinator.snapshot.statistics.average_period_length
     assert closed_average == 3.0
 

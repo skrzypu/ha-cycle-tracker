@@ -25,7 +25,6 @@ from custom_components.cycle_tracker.const import (
     CONF_NOTIFICATION_OFFSET_DAYS,
     CONF_NOTIFICATION_TIME,
     CONF_PERIOD_LENGTH,
-    CONF_POLL_INTERVAL,
     CONF_PREDICTION_ALGORITHM,
     CONF_SERVICE_ACCOUNT_FILE,
     CONF_SPREADSHEET_ID,
@@ -177,7 +176,6 @@ async def test_new_entry_stores_the_default_history_window(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 10,
         },
     )
 
@@ -226,13 +224,25 @@ async def test_sheet_step_rejects_missing_required_column(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 5,
         },
     )
 
     assert result["type"] is FlowResultType.FORM
     assert result["step_id"] == "sheet"
     assert result["errors"] == {"base": "invalid_schema"}
+
+
+async def test_sheet_step_does_not_offer_poll_interval(
+    hass: HomeAssistant,
+    aioclient_mock: Any,
+) -> None:
+    """The sheet form has no poll-interval field to prefill or submit."""
+    result = await _drive_to_sheet_step(hass, aioclient_mock)
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "sheet"
+    fields = {str(marker.schema) for marker in result["data_schema"].schema}
+    assert "poll_interval" not in fields
 
 
 async def test_sheet_step_accepts_valid_header_and_creates_entry(
@@ -265,7 +275,6 @@ async def test_sheet_step_accepts_valid_header_and_creates_entry(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 10,
         },
     )
 
@@ -274,7 +283,7 @@ async def test_sheet_step_accepts_valid_header_and_creates_entry(
     assert entry.data[CONF_SPREADSHEET_ID] == SPREADSHEET_ID
     assert entry.data[CONF_WORKSHEET] == WORKSHEET
     assert entry.data[CONF_SERVICE_ACCOUNT_FILE] == key_path
-    assert entry.data[CONF_POLL_INTERVAL] == 10
+    assert "poll_interval" not in entry.data
 
 
 async def test_sheet_step_rejects_key_path_outside_config_dir(
@@ -291,7 +300,6 @@ async def test_sheet_step_rejects_key_path_outside_config_dir(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 5,
         },
     )
 
@@ -332,7 +340,6 @@ async def test_sheet_step_accepts_pasted_spreadsheet_url(
             ),
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 10,
         },
     )
 
@@ -366,7 +373,6 @@ async def test_sheet_step_rejects_malformed_spreadsheet_id(
                 CONF_SPREADSHEET_ID: "not a sheet id",
                 CONF_WORKSHEET: WORKSHEET,
                 CONF_SERVICE_ACCOUNT_FILE: key_path,
-                CONF_POLL_INTERVAL: 5,
             },
         )
 
@@ -444,7 +450,6 @@ async def test_sheet_step_offers_import_for_empty_sheet_with_local_cache(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 5,
         },
     )
 
@@ -521,7 +526,6 @@ async def test_sheet_step_declining_import_writes_no_rows(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 5,
         },
     )
 
@@ -562,7 +566,6 @@ async def test_sheet_step_maps_auth_error_to_invalid_auth(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: WORKSHEET,
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 5,
         },
     )
 
@@ -601,7 +604,6 @@ async def test_sheet_step_maps_http_400_to_invalid_range(
             CONF_SPREADSHEET_ID: SPREADSHEET_ID,
             CONF_WORKSHEET: "Arkusz1",
             CONF_SERVICE_ACCOUNT_FILE: key_path,
-            CONF_POLL_INTERVAL: 5,
         },
     )
 
@@ -644,7 +646,6 @@ async def test_sheet_step_strips_whitespace_from_submitted_inputs(
             CONF_SPREADSHEET_ID: f"  {SPREADSHEET_ID}\n",
             CONF_WORKSHEET: f"\t{WORKSHEET}  ",
             CONF_SERVICE_ACCOUNT_FILE: f" {key_path} ",
-            CONF_POLL_INTERVAL: 10,
         },
     )
 
@@ -692,7 +693,6 @@ async def test_sheet_api_400_is_logged_with_status_and_google_message(
                 CONF_SPREADSHEET_ID: SPREADSHEET_ID,
                 CONF_WORKSHEET: "Arkusz1",
                 CONF_SERVICE_ACCOUNT_FILE: key_path,
-                CONF_POLL_INTERVAL: 5,
             },
         )
 

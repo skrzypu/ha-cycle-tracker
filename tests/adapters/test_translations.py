@@ -57,6 +57,12 @@ def test_translation_files_expose_identical_keys() -> None:
         assert not extra, f"{name} adds keys not present in strings.json: {extra}"
 
 
+def test_poll_interval_has_no_label_in_any_file() -> None:
+    """The removed poll-interval setting must not linger as a translation key."""
+    for name, path in TRANSLATION_FILES.items():
+        assert "poll_interval" not in _nested_keys(_load(path)), name
+
+
 def test_history_window_is_labelled_in_both_forms() -> None:
     """The same key carries a non-empty label in each file, in both forms."""
     for name, path in TRANSLATION_FILES.items():

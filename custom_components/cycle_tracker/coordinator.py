@@ -2,7 +2,7 @@
 
 import json
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any, TypeVar
 from uuid import uuid4
 
@@ -10,6 +10,7 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
@@ -21,7 +22,6 @@ from .const import (
     CONF_HISTORY_WINDOW,
     CONF_LAST_PERIOD_START,
     CONF_PERIOD_LENGTH,
-    CONF_POLL_INTERVAL,
     CONF_PREDICTION_ALGORITHM,
     CONF_SERVICE_ACCOUNT_FILE,
     CONF_SPREADSHEET_ID,
@@ -29,11 +29,8 @@ from .const import (
     DEFAULT_CYCLE_LENGTH,
     DEFAULT_ENABLE_FERTILITY_ESTIMATE,
     DEFAULT_PERIOD_LENGTH,
-    DEFAULT_POLL_INTERVAL_MINUTES,
     DEFAULT_PREDICTION_ALGORITHM,
     DOMAIN,
-    MAX_POLL_INTERVAL_MINUTES,
-    MIN_POLL_INTERVAL_MINUTES,
     STORAGE_KEY_SYNC_CACHE,
     STORAGE_VERSION_SYNC_CACHE,
 )
@@ -109,13 +106,12 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 else None
             )
         )
-        poll_minutes = self._poll_interval_minutes()
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=DOMAIN,
-            update_interval=timedelta(minutes=poll_minutes),
+            update_interval=None,
         )
         self._data: dict[str, Any] = {}
         self._periods: list[Period] = []
@@ -150,22 +146,25 @@ class CycleTrackerCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             return SheetsPeriodRepository(client, spreadsheet_id, worksheet)
         return None
 
-    def _poll_interval_minutes(self) -> int:
-        """Return the configured poll interval clamped to the supported range."""
-        if self._repo is None:
-            return DEFAULT_POLL_INTERVAL_MINUTES
-        try:
-            value = int(
-                self.entry.options.get(
-                    CONF_POLL_INTERVAL,
-                    self.entry.data.get(
-                        CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL_MINUTES
-                    ),
-                )
-            )
-        except (TypeError, ValueError):
-            value = DEFAULT_POLL_INTERVAL_MINUTES
-        return max(MIN_POLL_INTERVAL_MINUTES, min(MAX_POLL_INTERVAL_MINUTES, value))
+    @callback
+    def async_register_midnight_refresh(self) -> None:
+        """Read the sheet when the local calendar day rolls over.
+
+        ``async_track_time_change`` follows local time across DST, so the tick
+        stays aligned to midnight. The listener is released by the config entry
+        on unload via ``async_on_unload``.
+        """
+        unsub = async_track_time_change(
+            self.hass,
+            self._async_midnight_refresh,
+            hour=0,
+            minute=0,
+        )
+        self.entry.async_on_unload(unsub)
+
+    async def _async_midnight_refresh(self, _now: datetime) -> None:
+        """Request a full sheet read at local midnight."""
+        await self.async_request_refresh()
 
     def _setting(self, key: str, default: _T) -> _T:
         """Resolve one setting: entry options, then setup data, then the default.

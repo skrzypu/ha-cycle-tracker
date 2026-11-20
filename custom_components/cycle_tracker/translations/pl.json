@@ -32,8 +32,7 @@
         "data": {
           "spreadsheet_id": "Identyfikator arkusza (długi identyfikator z adresu URL arkusza)",
           "worksheet": "Nazwa arkusza (zakładki). Nowy arkusz Google nazywa pierwszą zakładkę Sheet1 — lub Arkusz1 w polskim koncie.",
-          "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)",
-          "poll_interval": "Jak często sprawdzać arkusz pod kątem zmian (minuty)"
+          "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)"
         }
       },
       "import_offer": {
@@ -68,8 +67,7 @@
           "enable_fertility_estimate": "Pokaż szacunek płodności (kalendarzowy z pasem niepewności)",
           "spreadsheet_id": "Identyfikator arkusza (długi identyfikator z adresu URL arkusza)",
           "worksheet": "Nazwa arkusza (np. Sheet1)",
-          "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)",
-          "poll_interval": "Jak często sprawdzać arkusz pod kątem zmian (minuty)"
+          "service_account_file": "Ścieżka do pliku klucza konta usługi (w katalogu konfiguracji, np. service_account.json)"
         },
         "data_description": {
           "enable_fertility_estimate": "Oparty na długościach Twoich cykli szacunek kalendarzowy. Nie jest metodą antykoncepcyjną i nie gwarantuje płodności ani jej braku. Decyzję o współżyciu podejmij samodzielnie, nie opierając się wyłącznie na tym szacunku."

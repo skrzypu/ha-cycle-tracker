@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from statistics import fmean
 from typing import Any
 
@@ -18,6 +18,8 @@ from custom_components.cycle_tracker.const import (
     ATTR_FERTILE_WINDOW_END,
     ATTR_FERTILE_WINDOW_START,
     ATTR_IS_LATE,
+    ATTR_IS_STALE,
+    ATTR_LAST_SYNC,
     ATTR_LIFETIME_AVERAGE_CYCLE_LENGTH,
     ATTR_OVULATION_WINDOW_END,
     ATTR_OVULATION_WINDOW_START,
@@ -306,3 +308,59 @@ async def test_statistics_report_excluded_cycles_as_warnings(
     warnings = state.attributes[ATTR_WARNINGS]
     assert [warning["kind"] for warning in warnings] == ["outlier"]
     assert isinstance(warnings[0]["period_id"], str)
+
+
+async def test_statistics_expose_freshness_attributes(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+) -> None:
+    """The statistics sensor reports the last read and its stale flag."""
+    state = hass.states.get("sensor.cycle_tracker_statistics")
+
+    assert state is not None
+    assert ATTR_LAST_SYNC in state.attributes
+    assert ATTR_IS_STALE in state.attributes
+    assert state.attributes[ATTR_LAST_SYNC] == coordinator.last_sync.isoformat()
+    assert state.attributes[ATTR_IS_STALE] is False
+
+
+async def test_is_stale_uses_calendar_days_and_leaves_availability_alone(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+    frozen_today: date,
+) -> None:
+    """Fresh on the read day and the next; stale from two days later.
+
+    The clock stays frozen: moving it would fire the real midnight listener and
+    perform a new read, which would legitimately make the data fresh again.
+    """
+    statistics = "sensor.cycle_tracker_statistics"
+    assert hass.states.get(statistics).attributes[ATTR_IS_STALE] is False
+
+    # A read from yesterday still passes the one-day grace period.
+    coordinator._last_sync = datetime(2026, 11, 12, 12, tzinfo=UTC)
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    assert hass.states.get(statistics).attributes[ATTR_IS_STALE] is False
+
+    # Older than yesterday is stale, but availability is untouched.
+    coordinator._last_sync = datetime(2026, 11, 11, 12, tzinfo=UTC)
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+    state = hass.states.get(statistics)
+    assert state.attributes[ATTR_IS_STALE] is True
+    assert state.state != "unavailable"
+
+
+async def test_is_stale_is_true_without_a_last_sync(
+    hass,
+    coordinator: CycleTrackerCoordinator,
+) -> None:
+    """A coordinator that never read the sheet reports a stale timestamp."""
+    coordinator._last_sync = None
+    coordinator.async_update_listeners()
+    await hass.async_block_till_done()
+
+    state = hass.states.get("sensor.cycle_tracker_statistics")
+    assert state.attributes[ATTR_LAST_SYNC] is None
+    assert state.attributes[ATTR_IS_STALE] is True

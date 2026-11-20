@@ -251,7 +251,7 @@ not modify your dashboard configuration, so add the resource manually:
 lovelace:
   mode: yaml
   resources:
-    - url: /cycle_tracker/cycle-tracker-card.js?v=0.2.7
+    - url: /cycle_tracker/cycle-tracker-card.js?v=0.2.8
       type: module
 ```
 
