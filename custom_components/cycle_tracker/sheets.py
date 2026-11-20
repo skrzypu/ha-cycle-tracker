@@ -129,6 +129,81 @@ class SheetsClient:
                 raise SheetsApiError(body)
         return body.get("values", [])
 
+    async def insert_row(
+        self,
+        spreadsheet_id: str,
+        worksheet: str,
+    ) -> None:
+        """Insert one blank row directly below the header (row 2).
+
+        Resolve the worksheet name to a numeric sheetId first because
+        ``InsertDimensionRequest`` addresses sheets by id, not by name.
+        """
+        token = await self._ensure_token()
+        headers = {"Authorization": f"Bearer {token}"}
+
+        get_url = f"{SHEETS_API_BASE}/{spreadsheet_id}"
+        async with self._session.get(
+            get_url,
+            params={"fields": "sheets.properties.title,sheets.properties.sheetId"},
+            headers=headers,
+        ) as resp:
+            body = await _json_body(resp)
+            if resp.status != 200:
+                raise SheetsApiError(body)
+
+        sheets = body.get("sheets")
+        if not isinstance(sheets, list):
+            raise SheetsApiError(
+                f"Missing or invalid 'sheets' in response for spreadsheet {spreadsheet_id!r}"
+            )
+
+        sheet_id: int | None = None
+        for sheet in sheets:
+            properties = sheet.get("properties") if isinstance(sheet, dict) else None
+            if not isinstance(properties, dict):
+                raise SheetsApiError(
+                    f"Missing or invalid sheet properties in spreadsheet {spreadsheet_id!r}"
+                )
+            if properties.get("title") != worksheet:
+                continue
+            candidate = properties.get("sheetId")
+            if not isinstance(candidate, int) or isinstance(candidate, bool):
+                raise SheetsApiError(
+                    f"Worksheet {worksheet!r} has a missing or invalid sheetId"
+                )
+            sheet_id = candidate
+            break
+
+        if sheet_id is None:
+            raise SheetsApiError(
+                f"Worksheet {worksheet!r} not found in spreadsheet {spreadsheet_id!r}"
+            )
+
+        url = f"{SHEETS_API_BASE}/{spreadsheet_id}:batchUpdate"
+        async with self._session.post(
+            url,
+            headers=headers,
+            json={
+                "requests": [
+                    {
+                        "insertDimension": {
+                            "range": {
+                                "sheetId": sheet_id,
+                                "dimension": "ROWS",
+                                "startIndex": 1,
+                                "endIndex": 2,
+                            },
+                            "inheritFromBefore": False,
+                        }
+                    }
+                ]
+            },
+        ) as resp:
+            body = await _json_body(resp)
+            if resp.status != 200:
+                raise SheetsApiError(body)
+
     async def append_row(
         self,
         spreadsheet_id: str,

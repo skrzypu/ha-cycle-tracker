@@ -403,6 +403,10 @@ async def test_sheet_step_offers_import_for_empty_sheet_with_local_cache(
     APPEND_RE = re.compile(
         r"https://sheets\.googleapis\.com/v4/spreadsheets/[^/]+/values/[^/]+:append"
     )
+    # upsert writes the cached period into row 2 via update_row (PUT), not append.
+    UPDATE_RE = re.compile(
+        r"https://sheets\.googleapis\.com/v4/spreadsheets/[^/]+/values/[^/]+![A-Z]+\d+:[A-Z]+\d+\?"
+    )
 
     # Seed the legacy local store with one period.
     store = Store(hass, STORAGE_VERSION, STORAGE_KEY)
@@ -442,6 +446,7 @@ async def test_sheet_step_offers_import_for_empty_sheet_with_local_cache(
         },
     )
     aioclient_mock.post(APPEND_RE, status=200, json={})
+    aioclient_mock.put(UPDATE_RE, status=200, json={})
     key_path = _write_key_file(hass)
 
     result = await hass.config_entries.flow.async_configure(

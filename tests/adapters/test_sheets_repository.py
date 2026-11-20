@@ -10,11 +10,14 @@ from uuid import uuid4
 import pytest
 
 from custom_components.cycle_tracker.domain.models import Period
+from custom_components.cycle_tracker.domain.validation import InvalidRowReport
 from custom_components.cycle_tracker.repository import (
     SheetSchemaError,
     SheetsPeriodRepository,
 )
-from custom_components.cycle_tracker.sheets import SheetsClient
+from custom_components.cycle_tracker.sheets import SheetsApiError, SheetsClient
+
+BLANK_ROW: list[Any] = ["", "", "", "", "", ""]
 
 
 @pytest.fixture
@@ -125,12 +128,94 @@ async def test_read_all_raises_when_required_column_missing(
     assert "flow_intensity" in exc_info.value.missing_columns
 
 
-async def test_upsert_appends_new_period(
+async def test_read_all_skips_fully_blank_rows_without_reports(
     client: AsyncMock,
     headers: list[str],
 ) -> None:
-    """A period whose id is not present is appended as a new row."""
-    client.read_rows.return_value = [headers]
+    """Fully blank data rows produce no period and no invalid-row report."""
+    period_id = uuid4()
+    client.read_rows.return_value = [
+        headers,
+        list(BLANK_ROW),
+        [str(period_id), "2026-01-01", "", "", "", ""],
+        list(BLANK_ROW),
+    ]
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+
+    periods = await repo.read_all()
+
+    assert [period.id for period in periods] == [period_id]
+    assert repo.last_invalid_reports == []
+
+
+async def test_read_all_blank_only_sheet_has_no_periods_or_reports(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """A header plus only blank rows reads as completely empty."""
+    client.read_rows.return_value = [headers, list(BLANK_ROW), list(BLANK_ROW)]
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+
+    assert await repo.read_all() == []
+    assert repo.last_invalid_reports == []
+
+
+async def test_read_all_still_reports_partly_filled_rows_with_bad_start(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """Rows with content but a missing or unparsable start are still reported."""
+    client.read_rows.return_value = [
+        headers,
+        ["", "", "", "", "note but no start", ""],
+        ["some-id", "not-a-date", "", "", "", ""],
+        [str(uuid4()), "2026-01-01", "", "", "", ""],
+    ]
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+
+    periods = await repo.read_all()
+
+    assert len(periods) == 1
+    assert repo.last_invalid_reports == [
+        InvalidRowReport(2, "missing or unparsable start_date"),
+        InvalidRowReport(3, "missing or unparsable start_date"),
+    ]
+
+
+async def test_sheet_has_data_rows_ignores_blank_rows(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """A header with only blank data rows does not count as populated."""
+    client.read_rows.return_value = [headers, list(BLANK_ROW), list(BLANK_ROW)]
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+
+    assert await repo.sheet_has_data_rows() is False
+
+
+async def test_sheet_has_data_rows_detects_real_row(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """A non-blank data row still counts as sheet data."""
+    client.read_rows.return_value = [
+        headers,
+        [str(uuid4()), "2026-01-01", "", "", "", ""],
+    ]
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+
+    assert await repo.sheet_has_data_rows() is True
+
+
+async def test_upsert_new_period_inserts_row_below_header(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """A new id with an occupied row 2 inserts at index 1 then writes row 2."""
+    client.read_rows.return_value = [
+        headers,
+        [str(uuid4()), "2026-01-01", "", "", "", ""],
+    ]
     repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
     period = Period(
         id=uuid4(),
@@ -142,12 +227,61 @@ async def test_upsert_appends_new_period(
 
     await repo.upsert(period)
 
-    client.append_row.assert_awaited_once_with(
-        "sheet1",
-        "Sheet1",
-        [str(period.id), "2026-01-01", "2026-01-05", "light", "note", ""],
-    )
-    client.update_row.assert_not_awaited()
+    client.insert_row.assert_awaited_once_with("sheet1", "Sheet1")
+    client.update_row.assert_awaited_once()
+    _, _, row_index, values = client.update_row.call_args.args
+    assert row_index == 2
+    assert values == [
+        str(period.id),
+        "2026-01-01",
+        "2026-01-05",
+        "light",
+        "note",
+        "",
+    ]
+    client.append_row.assert_not_awaited()
+
+
+async def test_upsert_reuses_blank_row_two(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """A new id with an existing blank row 2 writes there without inserting."""
+    client.read_rows.return_value = [headers, list(BLANK_ROW)]
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+    period = Period(id=uuid4(), start=date(2026, 1, 1), end=None, flow="medium")
+
+    await repo.upsert(period)
+
+    client.insert_row.assert_not_awaited()
+    client.update_row.assert_awaited_once()
+    _, _, row_index, values = client.update_row.call_args.args
+    assert row_index == 2
+    assert values[headers.index("period_id")] == str(period.id)
+    client.append_row.assert_not_awaited()
+
+
+async def test_upsert_partial_failure_propagates_without_second_insert(
+    client: AsyncMock,
+    headers: list[str],
+) -> None:
+    """If the value write fails after inserting, the error surfaces with one insert."""
+    client.read_rows.return_value = [
+        headers,
+        [str(uuid4()), "2026-01-01", "", "", "", ""],
+    ]
+    failure = SheetsApiError({"error": {"code": 500, "message": "write failed"}})
+    client.update_row.side_effect = failure
+    repo = SheetsPeriodRepository(client, "sheet1", "Sheet1")
+    period = Period(id=uuid4(), start=date(2026, 1, 1), end=None, flow="medium")
+
+    with pytest.raises(SheetsApiError) as exc_info:
+        await repo.upsert(period)
+
+    assert exc_info.value is failure
+    client.insert_row.assert_awaited_once()
+    client.update_row.assert_awaited_once()
+    client.append_row.assert_not_awaited()
 
 
 async def test_upsert_updates_existing_period_by_id(
@@ -176,6 +310,7 @@ async def test_upsert_updates_existing_period_by_id(
     assert values[headers.index("period_id")] == str(period_id)
     assert values[headers.index("end_date")] == "2026-01-05"
     assert values[headers.index("flow_intensity")] == "heavy"
+    client.insert_row.assert_not_awaited()
     client.append_row.assert_not_awaited()
 
 
@@ -223,7 +358,7 @@ async def test_serialized_row_has_no_source_column(
 
     await repo.upsert(period)
 
-    values: list[Any] = client.append_row.call_args.args[2]
+    values: list[Any] = client.update_row.call_args.args[3]
     assert len(values) == 6
     assert "source" not in headers
     assert all(

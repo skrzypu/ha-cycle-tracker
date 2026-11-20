@@ -1,11 +1,11 @@
 ---
 id: ADR-0001
 title: Local-only data storage and processing
-status: accepted
+status: superseded
 date: 2026-11-09
 deciders: []
 supersedes: null
-superseded-by: null
+superseded-by: "ADR-0004"
 related: []
 ---
 

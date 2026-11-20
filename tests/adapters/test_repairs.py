@@ -148,7 +148,9 @@ async def test_invalid_rows_create_sheet_rows_invalid_issue(
             "notes",
             "updated_at",
         ],
-        ["", "", "", "", "", ""],  # invalid: missing start date
+        # Partly filled (notes only) so the row is not blank, but its start
+        # date is missing -> invalid and reported.
+        ["", "", "", "", "orphan note: no start date", ""],
     ]
     repo = SheetsPeriodRepository(
         client,

@@ -130,11 +130,16 @@ def config_entry_data(sheet_settings: dict[str, Any]) -> dict[str, Any]:
 def sheet_emulator(hass: HomeAssistant, aioclient_mock: Any, service_account_key: str):
     """Return an in-memory Google Sheet emulator wired to ``aioclient_mock``.
 
-    The emulator registers handlers for the OAuth2 token endpoint and the four
-    Sheets API operations used by the integration: read, append, update and
-    clear. Tests can pre-seed rows with ``seed(rows)`` and inspect the current
-    data rows via ``rows``. The grid persists for the whole test, so an unload
-    followed by a fresh setup re-reads the same rows.
+    The emulator registers handlers for the OAuth2 token endpoint and the
+    Sheets API operations used by the integration: values read (GET), append,
+    update, clear, spreadsheet metadata lookup (``spreadsheets.get``) and
+    insert-row (``spreadsheets.batchUpdate``). The metadata lookup lets
+    ``insert_row`` resolve the worksheet title to a numeric sheetId, and the
+    batchUpdate side effect simulates a row inserted directly below the header
+    by shifting existing data rows down. Tests can pre-seed rows with
+    ``seed(rows)`` and inspect the current data rows via ``rows``. The grid
+    persists for the whole test, so an unload followed by a fresh setup
+    re-reads the same rows.
     """
     import re
 
@@ -184,9 +189,22 @@ def sheet_emulator(hass: HomeAssistant, aioclient_mock: Any, service_account_key
                 ),
                 side_effect=self._handle_get,
             )
+            # spreadsheets.get has no /values/ segment and carries the field
+            # mask as a query param, so anchor on ``?fields=`` to avoid the
+            # values GET regex above.
+            self._mocker.get(
+                re.compile(
+                    r"https://sheets\.googleapis\.com/v4/spreadsheets/[^/?]+\?fields="
+                ),
+                side_effect=self._handle_get_spreadsheet,
+            )
             self._mocker.post(
                 re.compile(r":append"),
                 side_effect=self._handle_append,
+            )
+            self._mocker.post(
+                re.compile(r":batchUpdate"),
+                side_effect=self._handle_batch_update,
             )
             self._mocker.put(
                 # The regex is matched against the whole URL, query string
@@ -210,9 +228,44 @@ def sheet_emulator(hass: HomeAssistant, aioclient_mock: Any, service_account_key
                 json={"values": [HEADER, *self._rows]},
             )
 
+        async def _handle_get_spreadsheet(self, method, url, data):
+            return AiohttpClientMockResponse(
+                method=method,
+                url=url,
+                status=200,
+                json={"sheets": [{"properties": {"title": "Sheet1", "sheetId": 0}}]},
+            )
+
         async def _handle_append(self, method, url, data):
             row = data["values"][0]
             self._rows.append(row)
+            return AiohttpClientMockResponse(
+                method=method, url=url, status=200, json={}
+            )
+
+        async def _handle_batch_update(self, method, url, data):
+            # insertDimension inserts a blank row directly below the header
+            # (startIndex=1, endIndex=2 in 0-based sheet indices). The header
+            # is excluded from ``_rows``, so this shifts every existing data
+            # row down by inserting a blank row at index 0.
+            requests = data.get("requests", []) if isinstance(data, dict) else []
+            for request in requests:
+                insert = (
+                    request.get("insertDimension")
+                    if isinstance(request, dict)
+                    else None
+                )
+                if not isinstance(insert, dict):
+                    continue
+                dim_range = insert.get("range")
+                if not isinstance(dim_range, dict):
+                    continue
+                if (
+                    dim_range.get("dimension") == "ROWS"
+                    and dim_range.get("startIndex") == 1
+                    and dim_range.get("endIndex") == 2
+                ):
+                    self._rows.insert(0, ["", "", "", "", "", ""])
             return AiohttpClientMockResponse(
                 method=method, url=url, status=200, json={}
             )

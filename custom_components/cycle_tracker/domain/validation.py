@@ -64,7 +64,7 @@ def _is_newer_period(
         return True
     if existing.updated_at is not None:
         return False
-    return candidate_row > existing_row
+    return candidate_row < existing_row
 
 
 def validate_period_rows(
@@ -76,7 +76,7 @@ def validate_period_rows(
     missing or unparsable, its end precedes its start, its range overlaps an
     already-valid row, or its ``period_id`` duplicates a newer row. When two
     rows share an id, the newest ``updated_at`` wins; if neither has one, the
-    row with the greater row number wins.
+    row with the smaller row number (higher in the sheet) wins.
     """
     reports: list[InvalidRowReport] = []
     parseable: list[tuple[Period, int]] = []

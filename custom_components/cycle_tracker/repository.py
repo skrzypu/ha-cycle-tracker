@@ -139,6 +139,13 @@ def _header_indices(headers: list[str]) -> dict[str, int]:
     return indices
 
 
+def _is_blank_row(indices: dict[str, int], row: list[Any]) -> bool:
+    """Return True when every required column of a data row is empty or absent."""
+    return all(
+        index >= len(row) or row[index] in (None, "") for index in indices.values()
+    )
+
+
 def _parse_date_value(value: Any) -> date | None:
     """Parse a raw Sheets cell value as a date."""
     if isinstance(value, str):
@@ -252,9 +259,12 @@ class SheetsPeriodRepository(PeriodRepository):
         return list(self._last_invalid_reports)
 
     async def sheet_has_data_rows(self) -> bool:
-        """Return True when the worksheet contains any rows beyond the header."""
+        """Return True when the worksheet contains any non-blank data row."""
         rows = await self._client.read_rows(self._spreadsheet_id, self._worksheet)
-        return len(rows) > 1
+        if len(rows) <= 1:
+            return False
+        indices = _header_indices(rows[0])
+        return any(not _is_blank_row(indices, row) for row in rows[1:])
 
     async def read_all(self) -> list[Period]:
         """Load all valid periods from the worksheet, reporting invalid rows."""
@@ -264,9 +274,11 @@ class SheetsPeriodRepository(PeriodRepository):
             return []
 
         headers = rows[0]
-        _header_indices(headers)  # validate schema eagerly
+        indices = _header_indices(headers)  # validate schema eagerly
         candidates: list[tuple[Period | None, int]] = []
         for row_number, row in enumerate(rows[1:], start=2):
+            if _is_blank_row(indices, row):
+                continue
             candidates.append(
                 (self._map_row_to_period(headers, row, row_number), row_number)
             )
@@ -286,7 +298,7 @@ class SheetsPeriodRepository(PeriodRepository):
             )
 
     async def upsert(self, period: Period) -> None:
-        """Update an existing row or append a new one for the period."""
+        """Update an existing row in place, or write a new one at row 2."""
         rows = await self._client.read_rows(self._spreadsheet_id, self._worksheet)
         if not rows:
             raise SheetSchemaError(list(REQUIRED_COLUMNS))
@@ -309,8 +321,17 @@ class SheetsPeriodRepository(PeriodRepository):
             await self._client.update_row(
                 self._spreadsheet_id, self._worksheet, row_index, values
             )
-        else:
-            await self._client.append_row(self._spreadsheet_id, self._worksheet, values)
+            return
+
+        row_2 = rows[1] if len(rows) > 1 else []
+        if _is_blank_row(indices, row_2):
+            await self._client.update_row(
+                self._spreadsheet_id, self._worksheet, 2, values
+            )
+            return
+
+        await self._client.insert_row(self._spreadsheet_id, self._worksheet)
+        await self._client.update_row(self._spreadsheet_id, self._worksheet, 2, values)
 
     async def delete(self, period_id: UUID) -> None:
         """Clear the first row whose ``period_id`` matches."""

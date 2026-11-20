@@ -191,7 +191,7 @@ the design and product questions around it.
 
 ### I-019: Dedicated statistics card
 
-- **Status:** parked
+- **Status:** exploring
 - **Problem:** the shipped `cycle-tracker-card` already has a statistics section
   (`cycle-tracker-card.js:1257`, `_renderStatistics`) that will now carry two
   cycle-length averages — windowed and lifetime — alongside average period
@@ -215,6 +215,12 @@ the design and product questions around it.
   `lovelace-card` and `bundled-dashboard`, and layout work owned by
   `@designer`. Mobile-first, theme variables only and no external assets stay
   in force from `docs/design/card-brief.md`.
+
+  Reopened 2026-11-20 by I-015: the "no external assets" line now needs an
+  explicit revisit rather than a silent exception. The user accepts small,
+  well-maintained chart libraries with a clean security record, but no CDN
+  pull and no build step where a vendored file can serve; the daily card stays
+  dependency-free and only the chart card carries the dependency.
 - **Dependencies:**
   - I-015 (charts of period and cycle lengths; the natural trigger) — known
   - I-013 (decided 2026-11-19; windowed versus lifetime averages) — known
@@ -225,4 +231,5 @@ the design and product questions around it.
   it beyond the two averages?
 - **Decision:** parked on 2026-11-19 in favour of option A for I-013: both
   averages go into the existing card's statistics section now; revisit with
-  I-015.
+  I-015. Reopened on 2026-11-20 to `exploring`: the user wants a separate chart
+  card for I-015. Working choice only — no ADR, BDR or OpenSpec change yet.

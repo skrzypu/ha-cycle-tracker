@@ -77,29 +77,55 @@ copy, and SHALL keep the last successful snapshot when a read fails.
 - **WHEN** a refresh fails because Google is unreachable
 - **THEN** the entities keep the last successful values and the failure is recorded in the sync status
 
+### Requirement: Blank rows are ignored on read
+
+Fully blank data rows SHALL be treated as absent when the sheet is read: they
+SHALL NOT be reported as invalid rows and SHALL NOT count as data rows when
+deciding whether the sheet already contains periods.
+
+#### Scenario: Blank row is not reported invalid
+
+- **WHEN** a data row below the header is fully blank
+- **THEN** it is skipped without an invalid-row report and does not affect derived values or entities
+
+#### Scenario: Blank-only sheet counts as empty
+
+- **WHEN** the sheet has a header and only blank data rows
+- **THEN** it is treated as having no data rows for purposes of the one-time import of cached periods
+
 ### Requirement: Write period start
 
-The `log_start` service SHALL append a row with a generated `period_id`, the
-supplied start date, the optional flow intensity, an empty end date, and a
-timestamp in `updated_at`.
-
-When the latest row has no end date and the same start date, the service SHALL
-update that row instead of appending a duplicate.
+The `log_start` service SHALL write a new period directly below the header
+(row 2) with a generated `period_id`, the supplied start date, the optional flow
+intensity, an empty end date, and a timestamp in `updated_at`. A blank row 2
+SHALL be filled rather than adding another row, and an existing `period_id`
+SHALL be updated in place. When the latest row has no end date and the same
+start date, that row SHALL be updated instead of creating a duplicate.
 
 #### Scenario: New period appended
 
-- **WHEN** `log_start` is called and no open period starts on that date
-- **THEN** one row is appended and a refresh is requested
+- **WHEN** `log_start` is called for a `period_id` that is not yet in the sheet
+- **THEN** one row is inserted directly below the header (row 2) and a refresh is requested
+
+#### Scenario: Blank row 2 reused
+
+- **WHEN** `log_start` is called for a new `period_id` and row 2 is blank
+- **THEN** the values are written into row 2 without inserting an additional row
+
+#### Scenario: Existing period updated in place
+
+- **WHEN** `log_start` is called with a `period_id` already present in the sheet
+- **THEN** that existing row is updated in place and no new row is inserted
 
 #### Scenario: Same-day start updated
 
 - **WHEN** `log_start` is called and the latest row is open with the same start date
-- **THEN** the existing row is updated and no second row is appended
+- **THEN** the existing row is updated and no second row is created
 
 #### Scenario: Ambiguous append failure
 
-- **WHEN** an append request fails after the server may have accepted it
-- **THEN** the integration re-reads the sheet and reuses the existing row with the same `period_id` instead of appending a duplicate
+- **WHEN** a row insertion fails after the server may have accepted it, or the insertion succeeds but the subsequent value write fails
+- **THEN** the integration re-reads the sheet and reuses the row with the same `period_id` or the blank row at row 2 instead of inserting a duplicate
 
 ### Requirement: Write period end
 
@@ -118,8 +144,8 @@ whose end date is empty, and SHALL reject the call when no such row exists.
 
 ### Requirement: Row validation
 
-The integration SHALL validate every row and SHALL exclude invalid rows from
-predictions and statistics while continuing to use valid rows.
+The integration SHALL validate every data row and SHALL exclude invalid rows
+from predictions and statistics while continuing to use valid rows.
 
 Invalid rows SHALL be reported in a repair issue that identifies the row
 numbers.
@@ -142,7 +168,7 @@ numbers.
 #### Scenario: Duplicate period identifier
 
 - **WHEN** two rows share a `period_id`
-- **THEN** only the row with the newest `updated_at` is used and the duplicate is reported
+- **THEN** only the row with the newest `updated_at` is used and the duplicate is reported; when neither row has an `updated_at`, the row with the smaller row number (the higher row) is used
 
 ### Requirement: Sync freshness and availability
 
@@ -249,7 +275,7 @@ successful read time.
 
 #### Scenario: Start write triggers a re-read
 
-- **WHEN** `log_start` successfully appends or updates a row
+- **WHEN** `log_start` successfully inserts, fills a blank row, or updates a row
 - **THEN** the sheet is re-read immediately and the entities reflect the sheet contents
 
 #### Scenario: End write triggers a re-read

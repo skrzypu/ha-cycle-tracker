@@ -1,19 +1,20 @@
 ---
 id: ADR-0004
 title: Google Sheets is the source of truth for cycle data
-status: proposed
+status: accepted
 date: 2026-11-09
 deciders: []
-supersedes: null
+supersedes: "ADR-0001"
 superseded-by: null
 related: ["BDR-0003"]
 ---
 
 # ADR-0004: Google Sheets is the source of truth for cycle data
 
-> **Status note:** this record is `proposed`. It becomes effective and
-> supersedes ADR-0001 only when it is accepted, which waits for the domain data
-> model to be settled.
+> **Status note:** accepted on 2026-11-20. When proposed, acceptance waited for
+> the domain data model to be settled; that precondition was met by ADR-0006
+> (accepted 2026-11-10). With acceptance this decision takes effect and
+> supersedes ADR-0001.
 
 ## Context
 

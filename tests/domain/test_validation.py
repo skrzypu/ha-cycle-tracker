@@ -7,7 +7,12 @@ from uuid import UUID, uuid4
 
 from domain.models import Period
 from domain.ports import PeriodRepository
-from domain.validation import is_valid_period, period_overlaps_existing
+from domain.validation import (
+    InvalidRowReport,
+    is_valid_period,
+    period_overlaps_existing,
+    validate_period_rows,
+)
 
 
 class InMemoryRepository:
@@ -93,3 +98,15 @@ def test_open_period_overlaps_with_overlapping_closed_period() -> None:
 
 def test_repository_protocol_membership() -> None:
     assert isinstance(InMemoryRepository(), PeriodRepository)
+
+
+def test_duplicate_without_timestamps_keeps_topmost_row() -> None:
+    """With no updated_at the smaller row number wins the duplicate tie-break."""
+    period_id = uuid4()
+    top = Period(id=period_id, start=date(2026, 1, 1), end=date(2026, 1, 5))
+    lower = Period(id=period_id, start=date(2026, 1, 1), end=date(2026, 1, 6))
+
+    valid, reports = validate_period_rows([(top, 2), (lower, 3)])
+
+    assert valid == [top]
+    assert reports == [InvalidRowReport(3, "duplicate period_id (superseded)")]

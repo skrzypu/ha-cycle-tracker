@@ -11,7 +11,7 @@
 - **Value:** one stable shape for storage, services, sensors, and the sheet; a
   domain that can be tested without Home Assistant; no schema churn later.
 - **Constraints / conflicts:** ADR-0005 (SOLID, Clean Architecture, dependency
-  rule); ADR-0001 still says local-only until ADR-0004 is accepted; the proposed
+  rule); ADR-0001 was superseded by ADR-0004, accepted on 2026-11-20; the
   sheet schema in the archived `google-sheets-source-of-truth` change
   (`openspec/changes/archive/2026-11-17-google-sheets-source-of-truth/`) must map
   onto the model,

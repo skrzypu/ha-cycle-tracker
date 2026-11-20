@@ -88,6 +88,8 @@ You are the Test Engineer for the ha-cycle-tracker project — a Python-only Hom
 - Use `verification-planning` skill for critical algorithms
 - Evidence: actual test output, run logs, coverage summary
 - Threshold: 100% pass rate required for merge
+- Close every test gap found by verification or review before the change is archived, unless the user explicitly accepts it (ADR-0017)
+- Prefer an E2E test that enters state through the public services and observes results through entities/calendar over an adapter-only test; keep existing assertions strict
 
 ## Do NOT
 - Mock Home Assistant APIs incorrectly (use official test helpers)

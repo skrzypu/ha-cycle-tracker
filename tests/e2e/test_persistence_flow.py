@@ -104,10 +104,10 @@ async def test_a_restart_reproduces_the_entities_from_the_sheet(
 ) -> None:
     """Log history, restart the entry, and get identical states back.
 
-    The worksheet rows are asserted first so the restart cannot pass by
-    recomputing from data that was never persisted; the second half compares a
-    full survey of the seven sensors and the calendar after the entry is set up
-    again from the Google Sheet.
+    The worksheet rows are asserted first in newest-first order, so the restart
+    cannot pass by recomputing from data that was never persisted; the second
+    half compares a full survey of the seven sensors and the calendar after the
+    entry is set up again from the Google Sheet.
     """
     await closed_period(date(2026, 9, 16))
     await closed_period(date(2026, 10, 16))
@@ -115,12 +115,14 @@ async def test_a_restart_reproduces_the_entities_from_the_sheet(
 
     rows = sheet_emulator.rows
     assert len(rows) == len(SERVICE_ROWS)
-    for row, expected_row in zip(rows, SERVICE_ROWS):
+    # The sheet stores newest first, so match the chronological SERVICE_ROWS in
+    # reverse; the domain re-sorts by start_date for all downstream assertions.
+    for row, expected_row in zip(rows, reversed(SERVICE_ROWS)):
         assert UUID(row[0])  # period_id
         assert row[1] == expected_row["start_date"]
         assert row[3] == expected_row["flow_intensity"]
-    # Closed periods keep their end date; the open row has no end at all.
-    assert [row[2] for row in rows] == ["2026-09-20", "2026-10-20", ""]
+    # Closed periods keep their end date; the open (newest) row has no end at all.
+    assert [row[2] for row in rows] == ["", "2026-10-20", "2026-09-20"]
 
     before = _survey(state_of)
     before_events = await calendar_events(*CALENDAR_RANGE)
